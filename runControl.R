@@ -81,6 +81,8 @@ Global_paramlist <- read_excel(path_RunControl, sheet="Global_paramlist") %>% fi
 #*******************************************************************************
 
 
+
+
 runName <- runList$runname
 
 cat(runName)
@@ -91,6 +93,7 @@ paramlist$seed <- 1234 # For generating investment returns
 
 paramlist$v <- 1/(1 + paramlist$i)
 
+paramlist$cola_type
 
 # source("Model_sim(1)).R")
 

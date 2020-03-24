@@ -14,10 +14,9 @@ get_PVB_retiree <- function(age_fn, benefit_init, cola_assumed, i, decrement = d
 	# cola_assumed: assumed future annual cola
 	# i: discount rate
 	
-	
 	nyear_ret <- age_max_ - age_fn + 1
 	
-	decrement_fn <- filter(decrement, age >= age_fn, ea == min(ea))$qxm
+	decrement_fn <- filter(decrement, age >= age_fn, ea == min(ea))$qxm.r
 	
 	PVB <- sum(((1 + i)^-(0:(nyear_ret - 1))) * c(1, cumprod(1-decrement_fn)[-nyear_ret]) * (benefit_init * (1 + cola_assumed)^(0:(nyear_ret-1))))
 }
