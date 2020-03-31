@@ -49,7 +49,19 @@ get_PVB_active <- function(age_fn, ea_fn, age_ret, benefit_init, cola_assumed, i
 
 
 
+cppFunction('NumericVector fnC(NumericVector balance, NumericVector C, NumericVector r) {
+	int N = balance.size();
+	NumericVector out(N);
+	
+	out[0] = balance[0];
+	
+	for(int j = 1; j < N; ++j ) {
+		out[j] = (out[j-1] + C[j-1]) * (1 + r[j-1]);
+	}
+	
+	return out;
 
+}')
 
 
 

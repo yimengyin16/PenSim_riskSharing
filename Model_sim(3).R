@@ -376,7 +376,7 @@ for (j in 1:nyear){
 	
 	# j = 4
 	
-	
+
 	
 	if(j > 1) {
 			sim_retirees <- 
@@ -385,19 +385,28 @@ for (j in 1:nyear){
 	} 
 	
 	
-	
-	
 	# if(j > 1) {
+	# 
+	# 	sim_retirees %<>% mutate(IfUpdate = (year == j) & (year > ret_year))
+	#    
+	# 	cola_actual_current <- penSim$cola_actual[j - 1]
 	# 	
-	# 	# sim_retirees %<>% mutate(IfUpdate = (year == j) & (year > ret_year)) 
-	# 	
-	# 	sim_retirees <- 
-	# 		mutate(sim_retirees, B_ret  = ifelse(IfUpdate, B_ret[year == j - 1] * (1 + penSim$cola_actual[j - 1]), B_ret),
+	# 	sim_retirees <-
+	# 		mutate(sim_retirees, B_ret  = ifelse(IfUpdate, B_ret[year == j - 1] * (1 + cola_actual_current), B_ret),
 	# 					 AL_ret = B_ret * ax.r)
-	# } 
+	# }
 	# 
 	# 
-	# sim_retirees %>% filter(start_year == 2, ea == 20)
+	# sim_retirees %>% filter(start_year == 4, ea == 44)
+	# 
+	# sim_retirees %>% mutate(B_ret_update = B_ret* cola_actual_current)
+	# 
+	# n <- 2
+	# filter(sim_retirees, year == n) 
+	# filter(sim_retirees, year == n+1, year> ret_year)
+	# 
+	# sim_retirees[sim_retirees$year == n]
+	
 	
 	
 	# sim_retirees %>% filter(year == 4)

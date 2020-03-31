@@ -288,7 +288,7 @@ registerDoParallel(cl)
 
 penSim_results <- foreach(k = -1:nsim, .packages = c("dplyr", "tidyr", "magrittr", "Rcpp")) %dopar% {
 
-	# k <- 1 # for simulation runs
+	# k <- -1 # for simulation runs
 	
 	penSim   <- penSim0
 	SC_amort <- SC_amort0 
@@ -303,7 +303,8 @@ penSim_results <- foreach(k = -1:nsim, .packages = c("dplyr", "tidyr", "magrittr
 	
 for (j in 1:nyear){
 	 
-	j <- 2
+	
+	# j <- 3
 	
 	#### 1.  Asset value 
 	
@@ -376,7 +377,7 @@ for (j in 1:nyear){
 	
 	# j = 4
 	
-	
+
 	
 	if(j > 1) {
 			sim_retirees <- 
@@ -385,19 +386,28 @@ for (j in 1:nyear){
 	} 
 	
 	
-	
-	
 	# if(j > 1) {
+	# 
+	# 	sim_retirees %<>% mutate(IfUpdate = (year == j) & (year > ret_year))
+	#    
+	# 	cola_actual_current <- penSim$cola_actual[j - 1]
 	# 	
-	# 	# sim_retirees %<>% mutate(IfUpdate = (year == j) & (year > ret_year)) 
-	# 	
-	# 	sim_retirees <- 
-	# 		mutate(sim_retirees, B_ret  = ifelse(IfUpdate, B_ret[year == j - 1] * (1 + penSim$cola_actual[j - 1]), B_ret),
+	# 	sim_retirees <-
+	# 		mutate(sim_retirees, B_ret  = ifelse(IfUpdate, B_ret[year == j - 1] * (1 + cola_actual_current), B_ret),
 	# 					 AL_ret = B_ret * ax.r)
-	# } 
+	# }
 	# 
 	# 
-	# sim_retirees %>% filter(start_year == 2, ea == 20)
+	# sim_retirees %>% filter(start_year == 4, ea == 44)
+	# 
+	# sim_retirees %>% mutate(B_ret_update = B_ret* cola_actual_current)
+	# 
+	# n <- 2
+	# filter(sim_retirees, year == n) 
+	# filter(sim_retirees, year == n+1, year> ret_year)
+	# 
+	# sim_retirees[sim_retirees$year == n]
+	
 	
 	
 	# sim_retirees %>% filter(year == 4)
@@ -451,8 +461,245 @@ for (j in 1:nyear){
 	
 	
 	#**************************************************************************************************************
-	#                                        PSERS: shared-risk EEC rate 
+	#                                    EEC and ERC
 	#**************************************************************************************************************
+	
+	## EEC is a fixed share of total payroll
+	if(EEC_type == "fixed"){
+		# Employee contribution, based on payroll. May be adjusted later. 
+		penSim$EEC[j] <- with(penSim, salary[j] * EECrate_fixed)
+		
+		if(nonNegC){
+			penSim$ADC[j]    <- with(penSim, max(0, NC[j] + SC[j])) 
+			penSim$ADC.ER[j] <- with(penSim, ifelse(ADC[j] > EEC[j], ADC[j] - EEC[j], 0)) 
+			
+			# Adjustment of EEC
+			if(!EEC_fixed) penSim$EEC[j] <- with(penSim, ifelse(ADC[j] > EEC[j], EEC[j], ADC[j])) # penSim$EEC[j] <- with(penSim, EEC[j]) else
+			
+		} else {
+			# Allow for negative ADC and C  
+			penSim$ADC[j]    <- with(penSim, NC[j] + SC[j]) 
+			
+			if(EEC_fixed) {penSim$ADC.ER[j] <- with(penSim, ADC[j] - EEC[j]) # EEC is fixed
+			# EEC is not fixed
+			# 1. when ADC > EEC. Employees pay fixed EEC and employer pays the rest
+			} else if(with(penSim, ADC[j] > EEC[j])) {
+				penSim$ADC.ER[j] <- with(penSim, ADC[j] - EEC[j]) 
+				# 2. when 0 < ADC < EEC. Employees pay the entire ADC and employer pays 0. 
+			} else if(with(penSim, ADC[j] <= EEC[j] & ADC[j] > 0)) {
+				penSim$ADC.ER[j] <- 0
+				penSim$EEC[j]    <- with(penSim, ADC[j])
+				# 3. when ADC < 0, employees pay zero and employer pays nagative value (withdraw -ADC)
+			} else if(with(penSim, ADC[j] <= 0)) {
+				penSim$ADC.ER[j] <- with(penSim, ADC[j])
+				penSim$EEC[j]    <- 0
+			}
+		}
+		
+		
+		# ERC
+		penSim$ERC[j] <- with(penSim, ADC.ER[j])
+		 
+	}
+	
+	
+	
+	## Employees share a fixed proportion of ADC
+	if(EEC_type == "sharedADC"){
+		
+		# Note: 
+		#  - Negative EEC and ERC are NOT allowed: EEC = ERC = 0 if NC + SC < 0 
+		#  - May want to set floors for EEC and/or ERC
+		
+		penSim$ADC[j] <- with(penSim, max(0, NC[j] + SC[j])) 
+		penSim$EEC[j] <- with(penSim, ifelse(ADC[j] < 0, 0, ADC[j] * EECshare_sharedADC))
+		penSim$ERC[j] <- with(penSim, ADC[j] - EEC[j])
+		
+	}
+	
+	
+	
+	## EEC is a fixed share of NC
+	if(EEC_type == "sharedNC"){
+	  
+		# Note:
+		#  - EEC is fixed share of NC, which is almost always positive
+		#  - EEC may have very limited variation over time in this model. 
+		
+		penSim$EEC[j] <- with(penSim, NC[j] * EECshare_sharedNC)
+		
+		if(nonNegC){
+			penSim$ADC[j]    <- with(penSim, max(0, NC[j] + SC[j])) 
+			penSim$ADC.ER[j] <- with(penSim, ifelse(ADC[j] > EEC[j], ADC[j] - EEC[j], 0)) 
+			
+			# Adjustment of EEC
+			if(!EEC_fixed) penSim$EEC[j] <- with(penSim, ifelse(ADC[j] > EEC[j], EEC[j], ADC[j])) # penSim$EEC[j] <- with(penSim, EEC[j]) else
+			
+		} else {
+			# Allow for negative ADC and C  
+			penSim$ADC[j]    <- with(penSim, NC[j] + SC[j]) 
+			
+			if(EEC_fixed) {penSim$ADC.ER[j] <- with(penSim, ADC[j] - EEC[j]) # EEC is fixed
+			# EEC is not fixed
+			# 1. when ADC > EEC. Employees pay fixed EEC and employer pays the rest
+			} else if(with(penSim, ADC[j] > EEC[j])) {
+				penSim$ADC.ER[j] <- with(penSim, ADC[j] - EEC[j]) 
+				# 2. when 0 < ADC < EEC. Employees pay the entire ADC and employer pays 0. 
+			} else if(with(penSim, ADC[j] <= EEC[j] & ADC[j] > 0)) {
+				penSim$ADC.ER[j] <- 0
+				penSim$EEC[j]    <- with(penSim, ADC[j])
+				# 3. when ADC < 0, employees pay zero and employer pays nagative value (withdraw -ADC)
+			} else if(with(penSim, ADC[j] <= 0)) {
+				penSim$ADC.ER[j] <- with(penSim, ADC[j])
+				penSim$EEC[j]    <- 0
+			}
+		}
+		
+		# ERC
+		penSim$ERC[j] <- with(penSim, ADC.ER[j])
+		
+	}
+	
+	
+
+	## EEC is contingent upon the investment return in the previous year
+	if(EEC_type == "EEC_return"){
+		
+		# Note:
+		#  - The range of EEC rate is set to [EECrate_min_EEC_return, EECrate_max_EEC_return]
+		#  - EEC rate is set to EECrate_min_EEC_return when i.r[j-1] >= returnMax_EEC_return
+		#  - EEC rate is set to EECrate_max_EEC_return when i.r[j-1] <= returnMin_EEC_return
+		#  - EEC rate is set to middle point of its range in year 1
+		
+		# if(j == 1){
+		# 	penSim$EEC[j] <- with(penSim, salary[j] * 	(EECrate_min_EEC_return+EECrate_max_EEC_return)/2)
+		# } else {
+		# 	
+		# EEC_rate <- ifelse(penSim$i.r[j-1] > returnMax_EEC_return, EECrate_min_EEC_return,
+		# 									 ifelse(penSim$i.r[j-1] < returnMin_EEC_return, EECrate_max_EEC_return,
+		# 									 			 EECrate_min_EEC_return + (EECrate_max_EEC_return - EECrate_min_EEC_return) * (returnMax_EEC_return - penSim$i.r[j-1])/ (returnMax_EEC_return - returnMin_EEC_return)
+		# 									 			 )
+		# 									 )
+		# 
+		# penSim$EEC[j] <- with(penSim, salary[j] * EEC_rate)
+		# 
+		# }
+		
+		j_EEC <- ifelse(j == 1, j, j-1)
+			
+		EEC_rate <- ifelse(penSim$i.r[j_EEC] > returnMax_EEC_return, EECrate_min_EEC_return,
+											 ifelse(penSim$i.r[j_EEC] < returnMin_EEC_return, EECrate_max_EEC_return,
+											 			 EECrate_min_EEC_return + (EECrate_max_EEC_return - EECrate_min_EEC_return) * (returnMax_EEC_return - penSim$i.r[j_EEC])/ (returnMax_EEC_return - returnMin_EEC_return)
+											 )
+		            )                 
+		
+		penSim$EEC[j] <- with(penSim, salary[j] * EEC_rate) 
+		 
+	
+		
+		if(nonNegC){
+			penSim$ADC[j]    <- with(penSim, max(0, NC[j] + SC[j])) 
+			penSim$ADC.ER[j] <- with(penSim, ifelse(ADC[j] > EEC[j], ADC[j] - EEC[j], 0)) 
+			
+			# Adjustment of EEC
+			if(!EEC_fixed) penSim$EEC[j] <- with(penSim, ifelse(ADC[j] > EEC[j], EEC[j], ADC[j])) # penSim$EEC[j] <- with(penSim, EEC[j]) else
+			
+		} else {
+			# Allow for negative ADC and C  
+			penSim$ADC[j]    <- with(penSim, NC[j] + SC[j]) 
+			
+			if(EEC_fixed) {penSim$ADC.ER[j] <- with(penSim, ADC[j] - EEC[j]) # EEC is fixed
+			# EEC is not fixed
+			# 1. when ADC > EEC. Employees pay fixed EEC and employer pays the rest
+			} else if(with(penSim, ADC[j] > EEC[j])) {
+				penSim$ADC.ER[j] <- with(penSim, ADC[j] - EEC[j]) 
+				# 2. when 0 < ADC < EEC. Employees pay the entire ADC and employer pays 0. 
+			} else if(with(penSim, ADC[j] <= EEC[j] & ADC[j] > 0)) {
+				penSim$ADC.ER[j] <- 0
+				penSim$EEC[j]    <- with(penSim, ADC[j])
+				# 3. when ADC < 0, employees pay zero and employer pays nagative value (withdraw -ADC)
+			} else if(with(penSim, ADC[j] <= 0)) {
+				penSim$ADC.ER[j] <- with(penSim, ADC[j])
+				penSim$EEC[j]    <- 0
+			}
+		}
+		
+		
+		# ERC
+		penSim$ERC[j] <- with(penSim, ADC.ER[j])
+		
+	}
+	
+	
+	
+	## EEC is contingent upon the funded ratio (MA based) in the previous year
+	if(EEC_type == "EEC_FR"){
+		
+		# Note:
+		#  - The range of EEC rate is set to [EECrate_min_EEC_FR, EECrate_max_EEC_FR]
+		#  - EEC rate is set to EECrate_min_EEC_FR when i.r[j-1] >= FRMax_EEC_FR
+		#  - EEC rate is set to EECrate_max_EEC_FR when i.r[j-1] <= FRMin_EEC_FR
+		#  - EEC rate is set to middle point of its range in year 1
+		# 
+		# if(j == 1){
+		# 	penSim$EEC[j] <- with(penSim, salary[j] * 	(EECrate_min_EEC_FR+EECrate_max_EEC_FR)/2)
+		# } else {
+		# 	
+		# 	EEC_rate <- ifelse(penSim$FR_MA[j-1] > FRMax_EEC_FR, EECrate_min_EEC_FR,
+		# 										 ifelse(penSim$FR_MA[j-1] < FRMin_EEC_FR, EECrate_max_EEC_FR,
+		# 										 			 EECrate_min_EEC_FR + (EECrate_max_EEC_FR - EECrate_min_EEC_FR) * (FRMax_EEC_FR - penSim$FR_MA[j-1])/ (FRMax_EEC_FR - FRMin_EEC_FR)
+		# 										 )
+		# 	)
+		# 	
+		# 	penSim$EEC[j] <- with(penSim, salary[j] * EEC_rate)
+		# 	
+		# }
+		
+		
+		j_EEC <- ifelse(j == 1, j, j-1)
+		
+		EEC_rate <- ifelse(penSim$FR_MA[j_EEC] > FRMax_EEC_FR, EECrate_min_EEC_FR,
+											 ifelse(penSim$FR_MA[j_EEC] < FRMin_EEC_FR, EECrate_max_EEC_FR,
+											 			 EECrate_min_EEC_FR + (EECrate_max_EEC_FR - EECrate_min_EEC_FR) * (FRMax_EEC_FR - penSim$FR_MA[j_EEC])/ (FRMax_EEC_FR - FRMin_EEC_FR)
+											 )
+		)
+			
+		penSim$EEC[j] <- with(penSim, salary[j] * EEC_rate)
+			
+		if(nonNegC){
+			penSim$ADC[j]    <- with(penSim, max(0, NC[j] + SC[j])) 
+			penSim$ADC.ER[j] <- with(penSim, ifelse(ADC[j] > EEC[j], ADC[j] - EEC[j], 0)) 
+			
+			# Adjustment of EEC
+			if(!EEC_fixed) penSim$EEC[j] <- with(penSim, ifelse(ADC[j] > EEC[j], EEC[j], ADC[j])) # penSim$EEC[j] <- with(penSim, EEC[j]) else
+			
+		} else {
+			# Allow for negative ADC and C  
+			penSim$ADC[j]    <- with(penSim, NC[j] + SC[j]) 
+			
+			if(EEC_fixed) {penSim$ADC.ER[j] <- with(penSim, ADC[j] - EEC[j]) # EEC is fixed
+			# EEC is not fixed
+			# 1. when ADC > EEC. Employees pay fixed EEC and employer pays the rest
+			} else if(with(penSim, ADC[j] > EEC[j])) {
+				penSim$ADC.ER[j] <- with(penSim, ADC[j] - EEC[j]) 
+				# 2. when 0 < ADC < EEC. Employees pay the entire ADC and employer pays 0. 
+			} else if(with(penSim, ADC[j] <= EEC[j] & ADC[j] > 0)) {
+				penSim$ADC.ER[j] <- 0
+				penSim$EEC[j]    <- with(penSim, ADC[j])
+				# 3. when ADC < 0, employees pay zero and employer pays nagative value (withdraw -ADC)
+			} else if(with(penSim, ADC[j] <= 0)) {
+				penSim$ADC.ER[j] <- with(penSim, ADC[j])
+				penSim$EEC[j]    <- 0
+			}
+		}
+		
+		
+		# ERC
+		penSim$ERC[j] <- with(penSim, ADC.ER[j])
+		
+	}
+	
+	
 	
 	if(EEC_type == "sharedRisk"){
 		if(j > 1){
@@ -482,46 +729,75 @@ for (j in 1:nyear){
 		
 			penSim$EEC[j] <-  (EEC_rate + penSim$sharedRisk.rate[j]) * penSim$salary[j]
 
-		} else {
+			if(nonNegC){
+				penSim$ADC[j]    <- with(penSim, max(0, NC[j] + SC[j])) 
+				penSim$ADC.ER[j] <- with(penSim, ifelse(ADC[j] > EEC[j], ADC[j] - EEC[j], 0)) 
+				
+				# Adjustment of EEC
+				if(!EEC_fixed) penSim$EEC[j] <- with(penSim, ifelse(ADC[j] > EEC[j], EEC[j], ADC[j])) # penSim$EEC[j] <- with(penSim, EEC[j]) else
+				
+			} else {
+				# Allow for negative ADC and C  
+				penSim$ADC[j]    <- with(penSim, NC[j] + SC[j]) 
+				
+				if(EEC_fixed) {penSim$ADC.ER[j] <- with(penSim, ADC[j] - EEC[j]) # EEC is fixed
+				# EEC is not fixed
+				# 1. when ADC > EEC. Employees pay fixed EEC and employer pays the rest
+				} else if(with(penSim, ADC[j] > EEC[j])) {
+					penSim$ADC.ER[j] <- with(penSim, ADC[j] - EEC[j]) 
+					# 2. when 0 < ADC < EEC. Employees pay the entire ADC and employer pays 0. 
+				} else if(with(penSim, ADC[j] <= EEC[j] & ADC[j] > 0)) {
+					penSim$ADC.ER[j] <- 0
+					penSim$EEC[j]    <- with(penSim, ADC[j])
+					# 3. when ADC < 0, employees pay zero and employer pays nagative value (withdraw -ADC)
+				} else if(with(penSim, ADC[j] <= 0)) {
+					penSim$ADC.ER[j] <- with(penSim, ADC[j])
+					penSim$EEC[j]    <- 0
+				}
+			}
 		
-		# Employee contribution, based on payroll. May be adjusted later. 
-		penSim$EEC[j] <- with(penSim, salary[j] * EEC_rate)
-	}
+			
+			# ERC
+			penSim$ERC[j] <- with(penSim, ADC.ER[j])
+				
+		} 
+		
+	
+	
 	
 	#**************************************************************************************************************
 	
-	
-
-	
-	if(nonNegC){
-		penSim$ADC[j]    <- with(penSim, max(0, NC[j] + SC[j])) 
-		penSim$ADC.ER[j] <- with(penSim, ifelse(ADC[j] > EEC[j], ADC[j] - EEC[j], 0)) 
-		
-		# Adjustment of EEC
-		if(!EEC_fixed) penSim$EEC[j] <- with(penSim, ifelse(ADC[j] > EEC[j], EEC[j], ADC[j])) # penSim$EEC[j] <- with(penSim, EEC[j]) else
-		
-	} else {
-		# Allow for negative ADC and C  
-		penSim$ADC[j]    <- with(penSim, NC[j] + SC[j]) 
-		
-		if(EEC_fixed) {penSim$ADC.ER[j] <- with(penSim, ADC[j] - EEC[j]) # EEC is fixed
-		# EEC is not fixed
-		# 1. when ADC > EEC. Employees pay fixed EEC and employer pays the rest
-		} else if(with(penSim, ADC[j] > EEC[j])) {
-			penSim$ADC.ER[j] <- with(penSim, ADC[j] - EEC[j]) 
-			# 2. when 0 < ADC < EEC. Employees pay the entire ADC and employer pays 0. 
-		} else if(with(penSim, ADC[j] <= EEC[j] & ADC[j] > 0)) {
-			penSim$ADC.ER[j] <- 0
-			penSim$EEC[j]    <- with(penSim, ADC[j])
-			# 3. when ADC < 0, employees pay zero and employer pays nagative value (withdraw -ADC)
-		} else if(with(penSim, ADC[j] <= 0)) {
-			penSim$ADC.ER[j] <- with(penSim, ADC[j])
-			penSim$EEC[j]    <- 0
-		}
-	}
-	
-	# ERC
-	penSim$ERC[j] <- with(penSim, ADC.ER[j])
+	# if(nonNegC){
+	# 	penSim$ADC[j]    <- with(penSim, max(0, NC[j] + SC[j])) 
+	# 	penSim$ADC.ER[j] <- with(penSim, ifelse(ADC[j] > EEC[j], ADC[j] - EEC[j], 0)) 
+	# 	
+	# 	# Adjustment of EEC
+	# 	if(!EEC_fixed) penSim$EEC[j] <- with(penSim, ifelse(ADC[j] > EEC[j], EEC[j], ADC[j])) # penSim$EEC[j] <- with(penSim, EEC[j]) else
+	# 	
+	# } else {
+	# 	# Allow for negative ADC and C  
+	# 	penSim$ADC[j]    <- with(penSim, NC[j] + SC[j]) 
+	# 	
+	# 	if(EEC_fixed) {penSim$ADC.ER[j] <- with(penSim, ADC[j] - EEC[j]) # EEC is fixed
+	# 	# EEC is not fixed
+	# 	# 1. when ADC > EEC. Employees pay fixed EEC and employer pays the rest
+	# 	} else if(with(penSim, ADC[j] > EEC[j])) {
+	# 		penSim$ADC.ER[j] <- with(penSim, ADC[j] - EEC[j]) 
+	# 		# 2. when 0 < ADC < EEC. Employees pay the entire ADC and employer pays 0. 
+	# 	} else if(with(penSim, ADC[j] <= EEC[j] & ADC[j] > 0)) {
+	# 		penSim$ADC.ER[j] <- 0
+	# 		penSim$EEC[j]    <- with(penSim, ADC[j])
+	# 		# 3. when ADC < 0, employees pay zero and employer pays nagative value (withdraw -ADC)
+	# 	} else if(with(penSim, ADC[j] <= 0)) {
+	# 		penSim$ADC.ER[j] <- with(penSim, ADC[j])
+	# 		penSim$EEC[j]    <- 0
+	# 	}
+	# }
+	# 
+	# 
+	# 
+	# # ERC
+	# penSim$ERC[j] <- with(penSim, ADC.ER[j])
 	
 	
 	# C(j)
@@ -597,11 +873,8 @@ penSim_results <-
 
 }
 
-paramlist$cola_type <- "FRramp1"
 
-Global_paramlist$nsim <- 1000
-
-
+# Global_paramlist$nsim <- 10
 
 
 {
@@ -611,8 +884,7 @@ Global_paramlist$nsim <- 1000
 	suppressMessages(gc())
 }
 
-penSim_DB_results %>% filter(sim == -1) %>% print
-
+penSim_DB_results %>% filter(sim == -1) 
 
 
 

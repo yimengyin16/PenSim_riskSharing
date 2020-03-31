@@ -13,7 +13,7 @@ source("libraries.R")
 
 
 ## Setting folder paths
-dir_modelOutputs <- "Results/"
+dir_Outputs <- "Outputs/"
 
 
 
@@ -82,20 +82,21 @@ Global_paramlist <- read_excel(path_RunControl, sheet="Global_paramlist") %>% fi
 
 
 
+# 
+# runName <- runList$runname
+# 
+# cat(runName)
+# 
+# paramlist <- get_parmsList(runList, runName)
+# 
+# paramlist$seed <- 1234 # For generating investment returns
+# 
+# paramlist$v <- 1/(1 + paramlist$i)
+# 
+# paramlist$cola_type
+# paramlist$EEC_type
 
-runName <- runList$runname
-
-cat(runName)
-
-paramlist <- get_parmsList(runList, runName)
-
-paramlist$seed <- 1234 # For generating investment returns
-
-paramlist$v <- 1/(1 + paramlist$i)
-
-paramlist$cola_type
-
-# source("Model_sim(1)).R")
+#  source("Model_sim(4).R")
 
 # outputs_list <- list(paramlist        = paramlist,
 # 										 Global_paramlist = Global_paramlist,
@@ -105,42 +106,41 @@ paramlist$cola_type
 # 
 
 
-# for(runName in runList$runname ){
-# 	
-# 	
-# 	runName <- runList$runname
-# 
-# 	cat(runName)
-# 
-# 	paramlist <- get_parmsList(runList, runName)
-# 	
-# 	# if(paramlist$nyear.override != 0) Global_paramlist$nyear <- paramlist$nyear.override
-# 	
-# 	
-# 	paramlist$seed <- 1234 # For generating investment returns
-# 	
-# 	paramlist$v <- 1/(1 + paramlist$i)
-# 	
-# 	# Global_paramlist$range_age <- with(Global_paramlist, min_age:max_age)
-# 	# Global_paramlist$range_ea  <- with(Global_paramlist, min_ea:max_ea)
-# 
-# 	if(paramlist$cola_type != "SDRS"){
-# 
-# 		source("Model_sim(3).R")
-# 	  # penSim_results <-
-# 
-# 		} else {
-# 
-# 			source("Model_sim_SDRS(3).R")
-# 		}
-# 
-# 	outputs_list <- list(paramlist        = paramlist,
-# 											 Global_paramlist = Global_paramlist,
-# 											 results          = penSim_results)
-# 
-# 	save(outputs_list, file = paste0(dir_modelOutputs, "Outputs_", runName, ".RData"))
-# 	
-# }
+for(runName in runList$runname ){
+   
+   suppressMessages(gc())
+	# runName <- runList$runname
+
+	cat(runName)
+
+	paramlist <- get_parmsList(runList, runName)
+
+	# if(paramlist$nyear.override != 0) Global_paramlist$nyear <- paramlist$nyear.override
+
+
+	paramlist$seed <- 1234 # For generating investment returns
+
+	paramlist$v <- 1/(1 + paramlist$i)
+
+	# Global_paramlist$range_age <- with(Global_paramlist, min_age:max_age)
+	# Global_paramlist$range_ea  <- with(Global_paramlist, min_ea:max_ea)
+
+	if(paramlist$cola_type != "SDRS"){
+
+		source("Model_sim(4).R")
+
+		} else {
+
+			source("Model_sim_SDRS(3).R")
+		}
+
+	outputs_list <- list(paramlist = paramlist,
+											 Global_paramlist = Global_paramlist,
+											 results          = penSim_DB_results)
+
+	save(outputs_list, file = paste0(dir_Outputs, "Outputs_", runName, ".RData"))
+
+}
 
 
 
