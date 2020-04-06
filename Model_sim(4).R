@@ -10,7 +10,6 @@ assign_parmsList(Global_paramlist_, envir = environment())
 assign_parmsList(paramlist_,  envir = environment())
 
 
-
 #******************************************************************************* 
 #                 Processing data from Model_Main   ####
 #*******************************************************************************
@@ -18,7 +17,7 @@ assign_parmsList(paramlist_,  envir = environment())
 load("Inputs/riskShaing_demographics.RData")
 # df_actives
 # df_retirees
-# df_decrement
+# decrement
 
 
 ## Decrement table
@@ -41,20 +40,27 @@ df_retirees %<>%
   			 ret_year = year.retire) %>%
 	mutate(start_year = year - (age - ea),
 				 ret_age    = age - (year - ret_year)) %>% 
-	filter(ret_year == 1 | ret_age == 60, !(ret_year < 1&n_ret == 0), year <= nyear) %>% 
-
+	filter(ret_year == 1 | ret_age == 60, 
+				 !(ret_year < 1 & n_ret == 0),    # excluding some unnecessary rows
+				 year <= nyear) %>% 
 	mutate_at(vars(B_ret, AL_ret, n_ret), list(na2zero)) %>% 
 	select(start_year, ea, age, year,ret_age, ret_year, everything()) %>% 
 	ungroup() %>% 
 	arrange(year, ret_year, ea, age) # one-to-one mapping between retirement year and age with single retirement age, 
+df_retirees %>% head
+
+# Notes: 
+#  - For existing members in year 1, only the benefit values in year 1 will be used. 
+#  - For all future members (start_year >= 2), only the benefit values at retirement age will be used. 
+#  - ax.r is the annuity factor at age x (PV of future annuity payments for $1's payment at current age). 
 
 
 # All starting years allowed
 start_years <- c(df_retirees$start_year[df_retirees$year == 1], 1:nyear)
 df_retirees	%<>%  filter( !(ret_year == 1 & (!start_year %in% start_years))) 
 
-df_retirees %>% filter(year == 2) 
-df_retirees %>% filter(start_year == 1, ea ==20) 
+# df_retirees %>% filter(year == 2) 
+# df_retirees %>% filter(start_year == 1, ea ==20) 
 
 
 ## Active members
@@ -103,11 +109,10 @@ sim_actives_yearsum
 #*******************************************************************************
 
 # Only keep B_ret for initial retirees at year 1 and future retirees at their retirement year
-
 # Note that the retirement year for initial retirees is set to 1 for convenience.
 # Therefore the condition of ret_year == year can cover both cases we want to keep
 
-# Total liability for retirees in year 1, to be used to determine the year asset value.
+# Total liability for retirees in year 1, to be used to determine the year-1 asset value.
 AL_ret_year1 <- 
 	df_retirees %>% 
 	filter(year == 1) %>% 
@@ -126,47 +131,11 @@ sim_retirees0 <-
 
 
 
-
-
-
-#*************************************************** 
-#             Preparation: Retirees (Steady State)  ####
-#***************************************************
-
-#  # Adjust benefit in year 1 for past cola 
-# ss_retirees  %<>% mutate(B_ret = (1 + cola_baseline)^(age - 60) * B_ret)
-# ss_retirees2 %<>% mutate(B_ret = (1 + cola_baseline)^(age - 60) * B_ret)
-# 
-#  # Calculate year 1 AL for retirees
-# ss_retirees2$AL_ret <- mapply(get_PVB_retiree, ss_retirees2$age, ss_retirees2$B_ret , MoreArgs = list(cola_assumed = cola_baseline, i = dr, decrement = df_decrement, age_max_ = age_max))
-# 
-#  # Construct df for nyear years. values for year > 1 will be calculated in the loop.  
-# sim_retirees <- 
-# 	expand.grid(age = age_ret:age_max, year = 1:nyear) %>% 
-# 	left_join(ss_retirees2, by = "age") %>% 
-# 	mutate(AL_ret = ifelse(year == 1, AL_ret, 0),
-# 				 B_ret  = ifelse(year == 1, B_ret, 0)) %>% 
-# 	select(year, age, everything())
-# 
-#  # Step df for annual totals ( filled by 0s, values to be calculated later)
-# sim_retirees_yearsum <- 
-# 	sim_retirees %>% 
-# 	group_by(year) %>% 
-# 	summarise(AL_ret  = sum(AL_ret * n_ret),
-# 						B       = sum(B_ret  * n_ret),
-# 						n_ret   = sum(n_ret)) 
-# sim_retirees_yearsum
-# 
-#  # convert to list for the loop. 
-# lsim_retirees0 <- split(sim_retirees, sim_retirees$year) 
-# 
-
-
 #******************************************************************************* 
 #                           Preparation: loop  ####
 #*******************************************************************************
 
-# Setep df for annual totals 
+# Setup df for annual values 
 
 penSim0 <- 
 	sim_actives_yearsum %>% 
@@ -207,12 +176,12 @@ penSim0 <-
 				 
 				 DC_MA  = 0,
 				 
-				 i.r_geoReturn = 0,
+				 i.r_geoReturn   = 0,
+				 infl_stoch      = 0,
+				 
+				 # For PSERS policy
 				 sharedRisk.rate = 0,
-				 SharedRiskEval = 0,
-				 infl_stoch     = 0
-				 
-				 
+				 SharedRiskEval  = 0
 				 ) 
 
 penSim0
@@ -222,38 +191,44 @@ penSim0
 penSim0$SharedRiskEval <- seq_len(nyear) %% 3 == 0  # TRUE in the year to determine if the EEC rate should be changed
 
 
-## Amortization and asset smoothing
+
+#******************************************************************************* 
+#                     Amortization and asset smoothing                      ####
+#*******************************************************************************
+
+## matrix for amortization costs
 SC_amort0 <- matrix(0, nyear + m, nyear + m)
+
+## asset smoothing
 s.vector <- seq(0,1,length = s.year + 1)[-(s.year+1)]; s.vector  # a vector containing the porportion of 
 
 
 
+#******************************************************************************* 
+#                     Investment returns                                    ####
+#*******************************************************************************
 
-## Generate investment returns
-
+# Asset-shock scenario
 i.crisis <- rep(i.mean - i.sd^2/2, nyear)
 i.crisis[2:5] <- c(-0.24, 0.12, 0.12, 0.12)
 
+
+# Stochastic returns
 set.seed(1234) ;i.r <- matrix(rnorm(nyear*nsim, i.mean, i.sd), nyear, nsim)
 i.r <- cbind(rep(i.mean - i.sd^2/2, nyear), i.r)
 i.r <- cbind(i.crisis, i.r)
-
 colnames(i.r) <- -1:nsim
-
 i.r_ <- i.r
 
-# cola_type <- c("constant", "return", "FR", "FRramp1", "FRramp2", "SDRS")[3]
 
-
-
-## Geometric return for shared-risk employee contribution
+## Geometric return for shared-risk employee contribution 
+# (currently only used in PSERS policy)
 
 # i.r_supplement <-  
 # 	cbind(rep(paramlist$i, 5),
 # 				matrix(c(0.0343, 0.0796, 0.1491, 0.0304, 0.0129), 5, Global_paramlist$nsim + 1))
 
 i.r_supplement <- matrix(dr, 5, Global_paramlist$nsim + 2)
-
 
 i.r_geoReturn <- rbind(i.r_supplement, i.r) %>% 
 	as.data.frame %>% 
@@ -266,10 +241,10 @@ i.r_geoReturn[1:9, ] <- rbind(i.r_supplement, i.r)[1:9,] %>%
 
 i.r_geoReturn <- i.r_geoReturn[-(1:5),]
 i.r_geoReturn_ <- i.r_geoReturn
-
 #i.r_geoReturn 
 
-# Generating stochastic inflation
+
+## Generating stochastic inflation
 set.seed(1234)
 infl_stoch <- matrix(rnorm(nyear*(nsim), infl_mean, infl_sd), nyear, nsim)
 infl_stoch <- cbind(matrix(infl_mean, nyear, 2), infl_stoch)
@@ -304,9 +279,11 @@ penSim_results <- foreach(k = -1:nsim, .packages = c("dplyr", "tidyr", "magrittr
 for (j in 1:nyear){
 	 
 	
-	# j <- 3
+	# j <- 1
 	
-	#### 1.  Asset value 
+	#***********************************
+	#           Asset value            # 
+	#***********************************
 	
 	# MA(j) and EAA(j) 
 	if(j == 1) {penSim$MA[j]  <- ifelse(k == -1, penSim$AL[j],
@@ -327,8 +304,11 @@ for (j in 1:nyear){
 		)
 	}
 	
-
-	#### 2. Determining (contingent COLA) based on previous year's conditioning variable(s) and inflation 
+ 
+	#**********************************************
+	#       Determining (contingent COLA)         # 
+	#**********************************************
+	#  cola determined based on previous year's conditioning variable(s) and inflation 
 	
 	if(j == 1) penSim$cola_actual[j] <- cola_baseline
 	
@@ -701,7 +681,7 @@ for (j in 1:nyear){
 	
 	
 	
-	if(EEC_type == "sharedRisk"){
+	if(EEC_type == "PSERS"){
 		if(j > 1){
 			
 			# in the re-evaluation year

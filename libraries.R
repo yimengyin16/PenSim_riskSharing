@@ -1,14 +1,11 @@
-#*********************************************
-#              Loading libraries             #  
-#*********************************************
+#*******************************************************************************
+#                           Loading libraries                               ####  
+#*******************************************************************************
 
 library(data.table)
-library(plyr) # must be loaded BEFORE dplyr/tidyverse
-library(gdata) # read.xls
+library(plyr)        # must be loaded BEFORE dplyr/tidyverse
+library(gdata)       # read.xls
 library(zoo)
-library(readxl)
-library(stringr)
-library("readxl")
 library("XLConnect") # slow but convenient because it reads ranges; NOTE: I had to install Java 64-bit on Windows 10 64-bit to load properly
 library(magrittr)    # use %<>%   
 library(scales)
@@ -22,6 +19,8 @@ library(doParallel)
 library(microbenchmark)
 
 # Tydiverse and other RStudio packages
+library(readxl)
+library(stringr)
 library(purrr)
 library(rlang)
 library(tidyverse) # loads ggplot2, tibble, tidyr, readr, purrr, dplyr, forcats
@@ -38,9 +37,9 @@ library(polynom)
 source("Functions.R")
 
 
-#*********************************************
-#          Colors and figure themes          #  
-#*********************************************
+#*******************************************************************************
+#                       Colors and figure themes                            ####  
+#*******************************************************************************
 
 # Colors
 {

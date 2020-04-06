@@ -1,4 +1,3 @@
-
 #*******************************************************************************
 #                           ### Initialization ####                      
 #*******************************************************************************
@@ -14,8 +13,6 @@ source("libraries.R")
 
 ## Setting folder paths
 dir_Outputs <- "Outputs/"
-
-
 
 
 #******************************************************************************* 
@@ -112,54 +109,31 @@ for(runName in runList$runname ){
 	# runName <- runList$runname
 
 	cat(runName)
-
 	paramlist <- get_parmsList(runList, runName)
-
-	# if(paramlist$nyear.override != 0) Global_paramlist$nyear <- paramlist$nyear.override
-
-
 	paramlist$seed <- 1234 # For generating investment returns
-
 	paramlist$v <- 1/(1 + paramlist$i)
-
 	# Global_paramlist$range_age <- with(Global_paramlist, min_age:max_age)
 	# Global_paramlist$range_ea  <- with(Global_paramlist, min_ea:max_ea)
 
-	if(paramlist$cola_type != "SDRS"){
-
-		source("Model_sim(4).R")
-
-		} else {
-
-			source("Model_sim_SDRS(3).R")
-		}
-
-	outputs_list <- list(paramlist = paramlist,
-											 Global_paramlist = Global_paramlist,
-											 results          = penSim_DB_results)
-
-	save(outputs_list, file = paste0(dir_Outputs, "Outputs_", runName, ".RData"))
-
+	
+	# if(paramlist$cola_type != "SDRS"){
+	# 
+	# 	source("Model_sim(4).R")
+	# 
+	# 	} else {
+	# 
+	# 		source("Model_sim_SDRS(3).R")
+	# 	}
+	# 
+	# outputs_list <- list(paramlist        = paramlist,
+	# 										 Global_paramlist = Global_paramlist,
+	# 										 results          = penSim_DB_results)
+  #
+	# save(outputs_list, file = paste0(dir_Outputs, "Outputs_", runName, ".RData"))
 }
 
 
 
-# 
-# df <- data.frame(a = 1:2, b = 3:4)
-# df
-# 
-# newname <- "c"
-# oldname <- "b"
-# 
-# df %>%
-# 	rename(!!newname := b )
-# 
-# df %>%
-# 	rename(c := !!oldname )
-# 
-# df %>% group_by(!!sym("b"))
-# df %>% select(!!!syms(as.list(c("b"))))
-# 
 
 
 
