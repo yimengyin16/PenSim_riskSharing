@@ -36,5 +36,5 @@ vignettes/*.pdf
 # Input and output Rdata files (may be large)
 Inputs*/**/*.RData
 Results*/**/*.RData
-
+Outputs*/**/*.RData
 ~$*
