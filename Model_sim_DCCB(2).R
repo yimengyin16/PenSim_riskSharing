@@ -2,8 +2,8 @@
 run_sim_DC <- function(paramlist_ = paramlist,
 											 Global_paramlist_ = Global_paramlist){
 
-# paramlist_ <- paramlist
-# Global_paramlist_ <- Global_paramlist
+paramlist_ <- paramlist
+Global_paramlist_ <- Global_paramlist
 
 assign_parmsList(Global_paramlist_, envir = environment())
 assign_parmsList(paramlist_,  envir = environment())
@@ -221,6 +221,7 @@ sim_actives_indiv <-
 	bind_rows()
 
 # Merge the df for active members and DC balance for $1's starting salary 
+# Faster merge using data.table 
 sim_actives_indiv %<>% 
 	left_join(select(df_DC_std, -year), by = c("sim", "start_year", "yos")) %>% 
 	filter(start_year >= 2)
@@ -350,12 +351,12 @@ penSim_DC_outputs <-
 
 
 
-Global_paramlist$nsim <- 1000
+Global_paramlist$nsim <- 100
 
 
 {
 	start_time <- Sys.time()	
-	penSim_DC_results <- run_sim_DC1()
+	penSim_DC_results <- run_sim_DC()
 	print(Sys.time() - start_time)
 	suppressMessages(gc())
 }

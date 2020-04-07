@@ -119,6 +119,15 @@ AL_ret_year1 <-
 	summarise(AL_ret = sum(AL_ret * n_ret)) %>% 
 	pull(AL_ret)
 
+# Total number of retirees by year
+
+df_n_ret <- 
+df_retirees %>% 
+	group_by(year) %>% 
+	summarize(n_ret = sum(n_ret))
+
+
+# df to be used in the simulation
 sim_retirees0 <- 
 	df_retirees %>% 
 	mutate(B_ret  = ifelse(ret_year == year , B_ret, 0), 
@@ -142,7 +151,7 @@ penSim0 <-
 	mutate(
 		     AL_ret = ifelse(year == 1, AL_ret_year1, 0),
 		     B      = 0,
-		     n_ret  = 0,
+		     n_ret  = df_n_ret$n_ret,
 		     
 		     cola_actual = 0,
 		     AL     = ifelse(year == 1, AL_act + AL_ret, 0),
@@ -853,13 +862,14 @@ penSim_results <-
 				 EEC_PR  = EEC/ salary,
 				 NC_PR   = NC / salary
 				 ) %>% 
-	select(runname, cola_type, sim, year, AL, MA, FR_MA, ERC_PR,EEC_PR, NC_PR, AL_std, B_std, C_std, DC_MA, everything()) %>% 
+	select(runname, cola_type, sim, year, AL, MA, FR_MA, ERC_PR,EEC_PR, NC_PR, AL_std, B_std, C_std, # DC_MA, 
+				 everything()) %>% 
 	as_tibble()
 
 }
 
 
-# Global_paramlist$nsim <- 10
+Global_paramlist$nsim <- 10
 
 
 {
@@ -869,7 +879,7 @@ penSim_results <-
 	suppressMessages(gc())
 }
 
-penSim_DB_results %>% filter(sim == -1) 
+penSim_DB_results %>% filter(sim == 1) %>% print()
 
 
 
