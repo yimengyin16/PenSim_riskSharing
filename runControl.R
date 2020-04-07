@@ -118,7 +118,7 @@ for(runName in runList$runname ){
 	
 	# if(paramlist$cola_type != "SDRS"){
 	# 
-	# 	source("Model_sim(4).R")
+	# 	source("Model_sim(5).R")
 	# 
 	# 	} else {
 	# 
