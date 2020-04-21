@@ -383,7 +383,7 @@ cl <- makeCluster(ncore)
 registerDoParallel(cl)
 
 
-penSim_results <- foreach(k = -1:nsim, .packages = c("dplyr", "tidyr", "magrittr", "Rcpp")) %dopar% {
+penSim_results <- foreach(k = -1:nsim, .packages = c("dplyr", "tidyr", "magrittr", "Rcpp", "polynom")) %dopar% {
 
 	# k <- -1 # for simulation runs
 	
@@ -401,7 +401,7 @@ penSim_results <- foreach(k = -1:nsim, .packages = c("dplyr", "tidyr", "magrittr
 for (j in 1:nyear){
 	 
 	
-	# j <- 1
+	#j <- 1
 	
 	#***********************************
 	#           Asset value            # 
@@ -446,7 +446,7 @@ for (j in 1:nyear){
 						 AL_ret = B_ret * ax.r)
 	} 
 	
-	sim_retirees0
+	# sim_retirees0
 	
 	##Exploring faster ways to update B and AL for retirees **********************
 	# 
@@ -547,6 +547,7 @@ for (j in 1:nyear){
 	#                SDRS COLA policy          # 
 	#**********************************************
 	
+	if(cola_type == "SDRS"){
 	#### Baseline liability	  
 	
 	penSim$AL_baseline[j] <- with(penSim, AL[j]) # Note that the regular AL is calculated with the baseline COLA (ax.r based on baseline cola)
@@ -557,8 +558,8 @@ for (j in 1:nyear){
 	#### Solve for COLA payable
 	
 	# weights for constructing a single curve
-	weight_actives  <- filter(df_actives, year == j) %>% mutate(weight = n_act * B_retAge) %>% select(ea, age, weight)
-	weight_retirees <- filter(sim_retirees, year == 1) %>% group_by(age) %>% summarise(weight = sum(B_ret * n_ret)) 
+	weight_actives  <- filter(df_actives,   year == j) %>% mutate(weight = n_act * B_retAge) %>% select(ea, age, weight)
+	weight_retirees <- filter(sim_retirees, year == j) %>% group_by(age) %>% summarise(weight = sum(B_ret * n_ret)) 
 	
 	
 	# Constructing a single COLA-AL curve
@@ -573,7 +574,7 @@ for (j in 1:nyear){
 							b2 = sum(b2 * weight),
 							b3 = sum(b3 * weight)
 		)
-	# p_coeff_single
+	p_coeff_single
 	# predict(polynomial(p_coeff_single), 0.015)/penSim$AL[j]	# very close
 	
 	
@@ -586,6 +587,7 @@ for (j in 1:nyear){
 	# Define and solve polynomial
 	p_single <- polynomial(p_coeff_single_solve)
 	y_single <- solve(p_single)
+	# y_single
 	
 	# Extract the real root (3rd degree polynomials always have at least one real root, and given the complex coefficients it is unlikely that all three roots are real)
 	cola_solved <- Re(y_single[Im(y_single)==0])  
@@ -635,7 +637,7 @@ for (j in 1:nyear){
 	
 	penSim$UAAL_SDRS[j] <- penSim$AM_min[j]  #??
 	
-	
+	}
 	
 	#**********************************************
 	#             Amortization costs              # 
@@ -659,10 +661,14 @@ for (j in 1:nyear){
 	if(amort_type == "closed") SC_amort[j, j:(j + m - 1)] <- amort_LG(penSim$AM[j], dr, m, salgrowth_amort, end = FALSE, method = amort_method)  
 	
 	## Supplemental cost in j
+	
+	if(cola_type == "SDRS"){ 	penSim$SC[j] <- penSim$SC_SDRS[j]
+		
+	} else {
 	penSim$SC[j] <- switch(amort_type,
 												 closed = sum(SC_amort[, j]),
 												 open   = amort_LG(penSim$UAAL[j], dr, m, salgrowth_amort, end = FALSE, method = amort_method)[1])
-	
+	} 
 	
 	# Employee contribution, based on payroll. May be adjusted later. 
 	#penSim$EEC[j] <- with(penSim, salary[j] * EEC_rate)
@@ -673,7 +679,7 @@ for (j in 1:nyear){
 	#****************************************************
 	
 	## EEC is a fixed share of total payroll
-	if(EEC_type == "fixed"){
+	if(EEC_type == "fixed" & cola_type != "SDRS"){
 		# Employee contribution, based on payroll. May be adjusted later. 
 		penSim$EEC[j] <- with(penSim, salary[j] * EECrate_fixed)
 		
@@ -712,7 +718,7 @@ for (j in 1:nyear){
 	
 	
 	## Employees share a fixed proportion of ADC
-	if(EEC_type == "sharedADC"){
+	if(EEC_type == "sharedADC"& cola_type != "SDRS"){
 		
 		# Note: 
 		#  - Negative EEC and ERC are NOT allowed: EEC = ERC = 0 if NC + SC < 0 
@@ -726,7 +732,7 @@ for (j in 1:nyear){
 	
 	
 	## EEC is a fixed share of NC
-	if(EEC_type == "sharedNC"){
+	if(EEC_type == "sharedNC"& cola_type != "SDRS"){
 	  
 		# Note:
 		#  - EEC is fixed share of NC, which is almost always positive
@@ -768,7 +774,7 @@ for (j in 1:nyear){
 	
 
 	## EEC is contingent upon the investment return in the previous year
-	if(EEC_type == "EEC_return"){
+	if(EEC_type == "EEC_return"& cola_type != "SDRS"){
 		
 		# Note:
 		#  - The range of EEC rate is set to [EECrate_min_EEC_return, EECrate_max_EEC_return]
@@ -837,7 +843,7 @@ for (j in 1:nyear){
 	
 	
 	## EEC is contingent upon the funded ratio (MA based) in the previous year
-	if(EEC_type == "EEC_FR"){
+	if(EEC_type == "EEC_FR"& cola_type != "SDRS"){
 		
 		# Note:
 		#  - The range of EEC rate is set to [EECrate_min_EEC_FR, EECrate_max_EEC_FR]
@@ -904,7 +910,7 @@ for (j in 1:nyear){
 	}
 	
 	
-	if(EEC_type == "PSERS"){
+	if(EEC_type == "PSERS"& cola_type != "SDRS"){
 		if(j > 1){
 			
 			# in the re-evaluation year
@@ -967,6 +973,10 @@ for (j in 1:nyear){
 		
 	
 	if(cola_type == "SDRS"){
+		
+		# Notes for SDRS:
+		#  - For now, ADC always equal to NC + SC
+		#  - NC and corrective action costs are shared between ER and EE with fix proportions, no other rules/restrictions 
 		
 		penSim$ADC[j]   <- with(penSim, NC[j] + SC[j])
 		
@@ -1060,7 +1070,8 @@ for (j in 1:nyear){
 	# } else {
 	# 	penSim$DC_MA[j]  <- with(penSim, (DC_MA[j - 1] + salary[j - 1] * (DC_EECrate + DC_ERCrate)) * (1 + i.r[j - 1]))
 	# }
-
+	p_coeff_single
+	
 }
 
 as.data.frame(penSim)
@@ -1096,8 +1107,8 @@ penSim_results <-
 }
 
 
-Global_paramlist$nsim <- 10
-
+Global_paramlist$nsim <- 5
+paramlist$cola_type <- "SDRS"
 
 {
 	start_time <- Sys.time()	
@@ -1106,9 +1117,10 @@ Global_paramlist$nsim <- 10
 	suppressMessages(gc())
 }
 
-penSim_DB_results %>% filter(sim == 1) %>% print()
+penSim_DB_results %>% filter(sim == 0) %>% print()
 
 
+penSim_DB_results %>% filter(sim == 3) %>% select(year, C, FR_MA, FR_MA_baseline, FR_MA_solved, NC, C, i.r, cola_actual, NC, SC, AL_baseline, AL_solved) %>%  print()
 
 
 # penSim$AL

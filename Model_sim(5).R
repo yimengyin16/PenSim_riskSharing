@@ -219,7 +219,7 @@ s.vector <- seq(0,1,length = s.year + 1)[-(s.year+1)]; s.vector  # a vector cont
 
 # Asset-shock scenario
 i.crisis <- rep(i.mean - i.sd^2/2, nyear)
-i.crisis[2:5] <- c(-0.24, 0.12, 0.12, 0.12)
+# i.crisis[2:5] <- c(-0.24, 0.12, 0.12, 0.12)
 
 
 # Stochastic returns
@@ -872,7 +872,7 @@ penSim_results <-
 }
 
 
-Global_paramlist$nsim <- 10
+Global_paramlist$nsim <- 5
 
 
 {
@@ -882,7 +882,7 @@ Global_paramlist$nsim <- 10
 	suppressMessages(gc())
 }
 
-penSim_DB_results %>% filter(sim == 1) %>% print()
+penSim_DB_results %>% filter(sim == -1) %>% print()
 
 
 
@@ -925,8 +925,8 @@ penSim_DB_results %>% filter(sim == 1) %>% print()
 
 
 
-
-
+load("Outputs/Outputs_EEC_FR.RData")
+outputs_list$results %>% filter(sim == -1)
 
 
 
