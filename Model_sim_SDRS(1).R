@@ -69,23 +69,27 @@ df_actives %<>%
 				 salary = sx,
 				 AL_act = ALx,
 				 NC_act = NCx,
-				 # ratio.NC_PVB = NC_PVB,
-				 # ratio.AL_PVB = AL_PVB,
 				 PVB_act  =  PVFBx.r,
 				 B_retAge = Bx.ret) %>%
-	mutate(start_year = year - (age - ea)) %>% 
-	select(start_year, ea, age, year,  n_act, salary, B_retAge, PVB_act, AL_act, NC_act) %>% 
+	mutate(start_year = year - (age - ea),
+				 ratio.NC_PVB = NC_act / PVB_act,
+				 ratio.AL_PVB = AL_act / PVB_act) %>% 
+	select(start_year, ea, age, year,  n_act, salary, B_retAge, PVB_act, AL_act, NC_act, ratio.NC_PVB, ratio.AL_PVB) %>% 
   as_tibble()
-df_actives %>% head()
-
+df_actives
 
 # df_retirees %>% filter(start_year == 5, ea ==20)
 # get_PVB_retiree(60, 1, 0.015, 0.075) %>% print
 
+#df_actives %>% filter(start_year == 1, ea == 25) %>% select(ea, age, year, ratio.NC_PVB, ratio.AL_PVB)
+#df_actives %>% filter(start_year == 5, ea == 25) %>% select(ea, age, year, ratio.NC_PVB, ratio.AL_PVB)
 
 
 
-#******************************************************************************* 
+
+
+
+#*******************************************************************************
 #                    Preparation: Active members  ####
 #*******************************************************************************
 
@@ -93,8 +97,8 @@ df_actives %>% head()
 # is constant over time
 
 sim_actives_yearsum <-
-df_actives %>% 
-	group_by(year) %>% 
+df_actives %>%
+	group_by(year) %>%
 	summarise(AL_act  = sum(AL_act * n_act),
 						NC      = sum(NC_act * n_act),
 						PVB_act = sum(PVB_act* n_act),
@@ -137,6 +141,94 @@ sim_retirees0 <-
 #x <- sim_retirees %>% filter(ret_year == 1, year == 1)
 #x$n_ret %>% sum
 #sim_retirees %>% filter(ret_year == 2, year == 3)
+
+
+
+#******************************************************************************* 
+#                   COLA-AL relationship with "$1 benefit"   ####
+#*******************************************************************************
+
+## Calculate PVB of "unit benefit" at all ages in retirement with a grid of COLA rates
+
+# cola grid from 0 to 3% by 0.1%
+cola_grid <- seq(0, by = 0.001, len =31)
+
+# PVB for each cola rate for $1 benefit
+df_PVB_colaGrid <- sapply(cola_grid, function(x) mapply(get_PVB_retiree, age_ret:age_max, 
+																												MoreArgs = list(benefit_init = 1, i = dr, cola_assumed = x, 
+																																				decrement = df_decrement, age_max_ = age_max))) %>% t
+colnames(df_PVB_colaGrid) <- age_ret:age_max
+
+df_PVB_colaGrid %<>% 
+  as_tibble() %>% 
+	mutate(cola = cola_grid) %>% 
+	select(cola, everything()) %>% 
+	gather(age, PVB1, -cola) %>% 
+	mutate(age = factor(age, levels = age_ret:age_max)) %>% 
+	select(age, cola, PVB1)
+df_PVB_colaGrid
+
+
+## COLA-AL relationship for retirees (group by age)
+
+# Fit the COLA-AL curve for each age group using polynomials of order 3
+p_coeff_retirees <- 
+	df_PVB_colaGrid %>% 
+	split(df_PVB_colaGrid$age) %>% 
+	map( ~ lm(PVB1 ~ cola + I(cola^2) + I(cola^3), data = .)) %>% 
+	map(coefficients) %>% 
+	bind_rows() %>% 
+	t %>% 
+  as_tibble() %>% 
+	mutate(age = age_ret:age_max) %>% 
+	rename(b0 = 1, b1=2, b2=3, b3 =4)
+
+p_coeff_retirees
+
+
+
+## COLA-AL relationship for actives (group by (ea, age))
+
+# PV of $1 benefit at the retirement age
+ax.r_ret <- filter(df_retirees ,age == age_ret)[1,] %>% pull(ax.r)
+
+# calculate AL as a percentage of PVB up retirement (PVBr) for all (ea, age) groups
+df_actives %<>% 
+	mutate(PVBr = B_retAge * ax.r_ret,
+				 ratio.AL_PVBr = AL_act / PVBr)
+
+
+# For each (ea, age), create a grid for COLAs, 
+#   and add the PVBr associated with those COLA values,
+#   then calculate AL for each cell. 
+df_AL.act_colaGrid <- 
+	ldply(cola_grid, 
+				 function(x){
+				 	df_actives %>% 
+				 		filter(year == 1) %>% # 820 cells
+				 		select(ea, age, ratio.AL_PVBr) %>% 
+				 		mutate(cola = x)}
+				 ) %>% 
+	left_join(filter(df_PVB_colaGrid, age == age_ret) %>% select(cola, PVB1r = PVB1), by = "cola") %>% 
+	mutate(AL1 = PVB1r * ratio.AL_PVBr) %>% 
+	unite(ea_age, ea, age, sep = "_")
+
+# Estimate the coeffients of the polynomial for the AL-COLA relationship. 
+p_coeff_actives <-  
+df_AL.act_colaGrid %>% 
+	split(df_AL.act_colaGrid$ea_age) %>% 
+	map( ~ lm(AL1 ~ cola + I(cola^2) + I(cola^3), data = .)) %>% 
+	map(coefficients) 
+grp_names <- names(p_coeff_actives)
+p_coeff_actives %<>% 
+	bind_rows() %>% 
+	t %>% 
+	as_tibble %>% 
+	mutate(ea_age = grp_names) %>% 
+	separate(ea_age, c("ea", "age"), sep = "_", convert = TRUE) %>% 
+	rename(b0 = 1, b1=2, b2=3, b3 =4)
+
+p_coeff_actives
 
 
 
@@ -190,7 +282,28 @@ penSim0 <-
 				 
 				 # For PSERS policy
 				 sharedRisk.rate = 0,
-				 SharedRiskEval  = 0
+				 SharedRiskEval  = 0,
+				 
+				 # For SDRS
+				 AL_act_baseline = 0,
+				 AL_ret_baseline = 0,
+				 
+				 AL_solved   = 0,
+				 AL_baseline = 0,
+				 
+				 UAAL_SDRS  = 0,
+				 FR_MA_solved   = 0,
+				 FR_MA_baseline = 0,
+				 
+				 AM_baseline  = 0, #based on baseline COLA
+				 AM_min       = 0, #based on minimum COLA
+				 
+				 SC_SDRS      = 0,
+				 
+				 NC.EE = 0, 
+				 NC.ER = 0,
+				 SC.EE = 0,
+				 SC.ER = 0
 				 ) 
 
 penSim0
@@ -320,53 +433,7 @@ for (j in 1:nyear){
 		}
 	
  
-	#**********************************************
-	#       Determining (contingent COLA)         # 
-	#**********************************************
-	# cola determined based on previous year's conditioning variable(s) and inflation 
-	
-	# Assume that cola for year 1 is equal to the baseline cola
-	if(j == 1) penSim$cola_actual[j] <- cola_baseline
-	
-	# Constant cola:
-	if(cola_type == "constant") {penSim$cola_actual[j] <- cola_baseline}
 
-		
-	# COLA indexed to inflation
-	if(cola_type == "Infl") penSim$cola_actual[j] <- max(min(penSim$infl_stoch[j-1], cola_max_FR))
-	
-
-	# return based COLA
-	if(j > 1 & cola_type == "return"){
-
-		if(penSim$i.r[j-1] >= dr) penSim$cola_actual[j - 1] <- cola_max_return else penSim$cola_actual[j - 1] <- cola_min_return
-		
-		}
- 
-	# funded ratio based COLA
-	if(j > 1 & cola_type == "FR" & infl_type == "constant"){
-		 if(penSim$FR_MA[j-1] >= FR_threshold_FR) penSim$cola_actual[j - 1] <- cola_max_FR else penSim$cola_actual[j-1] <- cola_min_FR
-		 }
-	
-	if(j > 1 & cola_type == "FR" & infl_type == "stochastic"){
-		if(penSim$FR_MA[j-1] >= FR_threshold_FR) penSim$cola_actual[j - 1] <- 
-				max(min(penSim$infl_stoch[j-1], cola_max_FR), cola_min_FR) else penSim$cola_actual[j-1] <- cola_min_FR
-	}
-	
-	
-	# funded ratio based COLA: ramp 1	
-	if(j > 1 & cola_type == "FRramp1"){
-			penSim$cola_actual[j - 1] <-  max(cola_min_FRramp, cola_max_FRramp - FRstepLength_FRramp * max(0, (FR_threshold_FRramp - penSim$FR_MA[j-1]))/FRstep_FRramp)
-		}
-	
-		
-	# funded ratio based COLA: ramp 2
-	if(j > 1 & cola_type == "FRramp2"){
-		penSim$cola_actual[j - 1] <- max(cola_min_FRramp2, cola_max_FRramp2 - FRstepLength_FRramp2 * max(0, (FR_threshold_FRramp2 - penSim$FR_MA[j-1]))/FRstep_FRramp2)
-	}
-	
-		
-	
 	#**********************************************
 	#       Liability and funded status           # 
 	#**********************************************
@@ -426,6 +493,148 @@ for (j in 1:nyear){
 	
 	# UAAL
 	penSim$UAAL[j] <- with(penSim, AL[j] - AA[j]) 
+	
+	
+	
+	
+	#**********************************************
+	#       Determining (contingent) COLA         # 
+	#**********************************************
+	# cola determined based on previous year's conditioning variable(s) and inflation 
+	
+	# Assume that cola for year 1 is equal to the baseline cola
+	if(j == 1) penSim$cola_actual[j] <- cola_baseline
+	
+	# Constant cola:
+	if(cola_type == "constant") {penSim$cola_actual[j] <- cola_baseline}
+	
+	
+	# COLA indexed to inflation
+	if(cola_type == "Infl") penSim$cola_actual[j] <- max(min(penSim$infl_stoch[j-1], cola_max_FR))
+	
+	
+	# return based COLA
+	if(j > 1 & cola_type == "return"){
+		
+		if(penSim$i.r[j-1] >= dr) penSim$cola_actual[j - 1] <- cola_max_return else penSim$cola_actual[j - 1] <- cola_min_return
+		
+	}
+	
+	# funded ratio based COLA
+	if(j > 1 & cola_type == "FR" & infl_type == "constant"){
+		if(penSim$FR_MA[j-1] >= FR_threshold_FR) penSim$cola_actual[j - 1] <- cola_max_FR else penSim$cola_actual[j-1] <- cola_min_FR
+	}
+	
+	if(j > 1 & cola_type == "FR" & infl_type == "stochastic"){
+		if(penSim$FR_MA[j-1] >= FR_threshold_FR) penSim$cola_actual[j - 1] <- 
+				max(min(penSim$infl_stoch[j-1], cola_max_FR), cola_min_FR) else penSim$cola_actual[j-1] <- cola_min_FR
+	}
+	
+	
+	# funded ratio based COLA: ramp 1	
+	if(j > 1 & cola_type == "FRramp1"){
+		penSim$cola_actual[j - 1] <-  max(cola_min_FRramp, cola_max_FRramp - FRstepLength_FRramp * max(0, (FR_threshold_FRramp - penSim$FR_MA[j-1]))/FRstep_FRramp)
+	}
+	
+	
+	# funded ratio based COLA: ramp 2
+	if(j > 1 & cola_type == "FRramp2"){
+		penSim$cola_actual[j - 1] <- max(cola_min_FRramp2, cola_max_FRramp2 - FRstepLength_FRramp2 * max(0, (FR_threshold_FRramp2 - penSim$FR_MA[j-1]))/FRstep_FRramp2)
+	}
+	
+	
+	#**********************************************
+	#                SDRS COLA policy          # 
+	#**********************************************
+	
+	#### Baseline liability	  
+	
+	penSim$AL_baseline[j] <- with(penSim, AL[j]) # Note that the regular AL is calculated with the baseline COLA (ax.r based on baseline cola)
+	penSim$FR_MA_baseline[j] <- with(penSim, MA[j] / AL_baseline[j])
+	# penSim$FR_MA_baseline[j]
+	
+	
+	#### Solve for COLA payable
+	
+	# weights for constructing a single curve
+	weight_actives  <- filter(df_actives, year == j) %>% mutate(weight = n_act * B_retAge) %>% select(ea, age, weight)
+	weight_retirees <- filter(sim_retirees, year == 1) %>% group_by(age) %>% summarise(weight = sum(B_ret * n_ret)) 
+	
+	
+	# Constructing a single COLA-AL curve
+	p_coeff_single <- 
+  bind_rows(
+	left_join(p_coeff_actives,  weight_actives,  by = c("ea", "age")),
+	left_join(p_coeff_retirees, weight_retirees, by = c("age"))
+  ) %>% 
+		mutate(weight = na2zero(weight)) %>% 
+		summarise(b0 = sum(b0 * weight),
+							b1 = sum(b1 * weight),
+							b2 = sum(b2 * weight),
+							b3 = sum(b3 * weight)
+		)
+	# p_coeff_single
+	# predict(polynomial(p_coeff_single), 0.015)/penSim$AL[j]	# very close
+	
+	
+	# Using the single curve to calculate cola for a target value of AL
+	
+	# update the polynomial coefficients for the target AL
+	p_coeff_single_solve <- p_coeff_single
+	p_coeff_single_solve[1] <- p_coeff_single[1] - penSim$MA[j]
+	
+	# Define and solve polynomial
+	p_single <- polynomial(p_coeff_single_solve)
+	y_single <- solve(p_single)
+	
+	# Extract the real root (3rd degree polynomials always have at least one real root, and given the complex coefficients it is unlikely that all three roots are real)
+	cola_solved <- Re(y_single[Im(y_single)==0])  
+	
+	
+	# Determine COLA for the next year
+	
+	if(penSim$FR_MA_baseline[j] >= FR_threshold_SDRS) {
+		penSim$cola_actual[j]  <- cola_max_SDRS
+		penSim$AL_solved[j]    <-  predict(polynomial(p_coeff_single), cola_baseline)
+		penSim$FR_MA_solved[j] <- with(penSim, MA[j] / AL_solved[j])
+		
+	}
+	
+	if(penSim$FR_MA_baseline[j] < FR_threshold_SDRS)  {
+		
+		if(cola_solved >= cola_min_SDRS) {
+			
+			penSim$cola_actual[j] <- cola_solved
+			penSim$AL_solved[j] <-  predict(polynomial(p_coeff_single), cola_solved)
+			penSim$FR_MA_solved[j] <- with(penSim, MA[j] / AL_solved[j])  
+			
+			
+		} else {
+			
+			penSim$cola_actual[j]  <- cola_min_SDRS
+			penSim$AL_solved[j]    <-  predict(polynomial(p_coeff_single), cola_min_SDRS)
+			penSim$FR_MA_solved[j] <- with(penSim, MA[j] / AL_solved[j]) 
+		}  
+	}		
+	
+	
+	# Determine corrective Action costs
+	# Assuming the difference between MA and the AL under cola_min are amortized using a 15 year open, level dollar method 
+	
+	# if(correctiveAction == 1) penSim$UAAL[j] <- max(0, predict(polynomial(p_coeff_single), cola_min_SDRS) - penSim$MA[j])
+	# 
+	# if(correctiveAction == 2) penSim$UAAL[j] <- ifelse(penSim$FR_MA_solved[j] < 1,  max(0, predict(polynomial(p_coeff_single), cola_baseline) - penSim$MA[j]), 0)
+	
+	
+	penSim$AM_min[j]        <- ifelse(penSim$FR_MA_solved[j] < 1,  max(0, predict(polynomial(p_coeff_single), cola_min_SDRS) - penSim$MA[j]), 0)
+	penSim$AM_baseline[j]   <- ifelse(penSim$FR_MA_solved[j] < 1,  max(0, predict(polynomial(p_coeff_single), cola_baseline) - penSim$MA[j]), 0)
+	
+	if(correctiveAction == 1) penSim$SC_SDRS[j] <- amort_LG(penSim$AM_baseline[j], dr, m, salgrowth_amort, end = FALSE, method = amort_method)[1]
+	if(correctiveAction == 2) penSim$SC_SDRS[j] <- amort_LG(penSim$AM_baseline[j], dr, 5, salgrowth_amort, end = FALSE, method = amort_method)[1]
+	
+	
+	penSim$UAAL_SDRS[j] <- penSim$AM_min[j]  #??
+	
 	
 	
 	#**********************************************
@@ -756,6 +965,21 @@ for (j in 1:nyear){
 				
 		} 
 		
+	
+	if(cola_type == "SDRS"){
+		
+		penSim$ADC[j]   <- with(penSim, NC[j] + SC[j])
+		
+		penSim$NC.ER[j] <- penSim$NC[j] * (1 - EECshare_NC) 
+		penSim$NC.EE[j] <- penSim$NC[j] * EECshare_NC 
+		
+		penSim$SC.ER[j] <- penSim$SC[j] * (1 - EECshare_correctiveAction) 
+		penSim$SC.EE[j] <- penSim$SC[j] * EECshare_correctiveAction 
+		
+		penSim$ERC[j] <- penSim$NC.ER[j] + penSim$SC.ER[j]
+		penSim$EEC[j] <- penSim$NC.EE[j] + penSim$SC.EE[j]
+		
+	}
 	
 	
 	

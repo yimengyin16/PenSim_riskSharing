@@ -2,8 +2,8 @@
 run_sim_DC <- function(paramlist_ = paramlist,
 											 Global_paramlist_ = Global_paramlist){
 
-paramlist_ <- paramlist
-Global_paramlist_ <- Global_paramlist
+# paramlist_ <- paramlist
+# Global_paramlist_ <- Global_paramlist
 
 assign_parmsList(Global_paramlist_, envir = environment())
 assign_parmsList(paramlist_,  envir = environment())
