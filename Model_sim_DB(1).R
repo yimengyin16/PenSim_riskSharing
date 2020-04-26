@@ -520,33 +520,33 @@ for (j in 1:nyear){
 	
 	
 	# return based COLA
-	if(j > 1 & cola_type == "return"){
+	if(cola_type == "return"){
 		
-		if(penSim$i.r[j-1] >= dr) penSim$cola_actual[j - 1] <- cola_max_return else penSim$cola_actual[j - 1] <- cola_min_return
+		if(penSim$i.r[j] >= dr) penSim$cola_actual[j] <- cola_max_return else penSim$cola_actual[j] <- cola_min_return
 		
 	}
 	
 	# funded ratio based COLA
-	if(j > 1 & cola_type == "FR" & infl_type == "constant"){
-		if(penSim$FR_MA[j-1] >= FR_threshold_FR) penSim$cola_actual[j - 1] <- cola_max_FR else penSim$cola_actual[j-1] <- cola_min_FR
+	if(cola_type == "FR" & infl_type == "constant"){
+		if(penSim$FR_MA[j] >= FR_threshold_FR) penSim$cola_actual[j] <- cola_max_FR else penSim$cola_actual[j] <- cola_min_FR
 	}
 	
-	if(j > 1 & cola_type == "FR" & infl_type == "stochastic"){
-		if(penSim$FR_MA[j-1] >= FR_threshold_FR) penSim$cola_actual[j - 1] <- 
-				max(min(penSim$infl_stoch[j-1], cola_max_FR), cola_min_FR) else penSim$cola_actual[j-1] <- cola_min_FR
+	if(cola_type == "FR" & infl_type == "stochastic"){
+		if(penSim$FR_MA[j] >= FR_threshold_FR) penSim$cola_actual[j] <- 
+				max(min(penSim$infl_stoch[j], cola_max_FR), cola_min_FR) else penSim$cola_actual[j] <- cola_min_FR
 	}
 	
 	
 	# funded ratio based COLA: ramp 1	
-	if(j > 1 & cola_type == "FRramp1"){
-		penSim$cola_actual[j - 1] <-  max(cola_min_FRramp, cola_max_FRramp - FRstepLength_FRramp * max(0, (FR_threshold_FRramp - penSim$FR_MA[j-1]))/FRstep_FRramp)
+	if(cola_type == "FRramp1"){
+		penSim$cola_actual[j] <-  max(cola_min_FRramp, cola_max_FRramp - FRstepLength_FRramp * max(0, (FR_threshold_FRramp - penSim$FR_MA[j]))/FRstep_FRramp)
 	}
 	
 	
-	# funded ratio based COLA: ramp 2
-	if(j > 1 & cola_type == "FRramp2"){
-		penSim$cola_actual[j - 1] <- max(cola_min_FRramp2, cola_max_FRramp2 - FRstepLength_FRramp2 * max(0, (FR_threshold_FRramp2 - penSim$FR_MA[j-1]))/FRstep_FRramp2)
-	}
+	# # funded ratio based COLA: ramp 2
+	# if(j > 1 & cola_type == "FRramp2"){
+	# 	penSim$cola_actual[j - 1] <- max(cola_min_FRramp2, cola_max_FRramp2 - FRstepLength_FRramp2 * max(0, (FR_threshold_FRramp2 - penSim$FR_MA[j-1]))/FRstep_FRramp2)
+	# }
 	
 	
 	#**********************************************
@@ -1113,7 +1113,7 @@ penSim_results <-
 }
 
 
-Global_paramlist$nsim <- 5
+# Global_paramlist$nsim <- 5
 # paramlist$cola_type <- "EEC_sharedADC"
 
 {

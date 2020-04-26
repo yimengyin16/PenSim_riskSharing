@@ -90,6 +90,10 @@ for(runName in runList$runname ){
 	# Global_paramlist$range_ea  <- with(Global_paramlist, min_ea:max_ea)
 
 	
+	
+	source("Model_sim_DB(1).R")
+	# source("Model_sim(5).R")
+	
 	# if(paramlist$cola_type != "SDRS"){
 	# 
 	# 	source("Model_sim(5).R")
@@ -98,11 +102,11 @@ for(runName in runList$runname ){
 	# 
 	# 		source("Model_sim_SDRS(3).R")
 	# 	}
-	# 
+
 	# outputs_list <- list(paramlist        = paramlist,
 	# 										 Global_paramlist = Global_paramlist,
 	# 										 results          = penSim_DB_results)
-	#  
+
 	# save(outputs_list, file = paste0(dir_Outputs, "Outputs_", runName, ".RData"))
 }
 

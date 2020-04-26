@@ -23,8 +23,6 @@ assign_parmsList(paramlist_,  envir = environment())
 #'   - Note: df_actives only include age 20-59, need add age 60 to each start_year/ea group.
 
 
-
-
 #******************************************************************************* 
 #                 Processing data from Model_Main   ####
 #*******************************************************************************
