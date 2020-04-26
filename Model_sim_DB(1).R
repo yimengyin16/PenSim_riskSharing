@@ -1125,8 +1125,7 @@ penSim_results <-
 
 penSim_DB_results %>% filter(sim == 0) %>% print()
 
-
-penSim_DB_results %>% filter(sim == 1) %>% select(year, C, FR_MA, FR_MA_baseline, FR_MA_solved, cola_actual, NC, C, i.r,  NC, SC, AL_baseline, AL_solved) %>%  print()
+# penSim_DB_results %>% filter(sim == 1) %>% select(year, C, FR_MA, FR_MA_baseline, FR_MA_solved, cola_actual, NC, C, i.r,  NC, SC, AL_baseline, AL_solved) %>%  print()
 
 
 
