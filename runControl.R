@@ -82,7 +82,7 @@ for(runName in runList$runname ){
    suppressMessages(gc())
 	# runName <- runList$runname
 
-	cat(runName)
+	cat(runName, "\n")
 	paramlist <- get_parmsList(runList, runName)
 	paramlist$seed <- 1234 # For generating investment returns
 	paramlist$v <- 1/(1 + paramlist$i)

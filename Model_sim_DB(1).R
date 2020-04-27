@@ -3,8 +3,8 @@
 run_sim_regular <- function(paramlist_ = paramlist,
 														Global_paramlist_ = Global_paramlist){
 
-# paramlist_ <- paramlist
-# Global_paramlist_ <- Global_paramlist
+#paramlist_ <- paramlist
+#Global_paramlist_ <- Global_paramlist
 
 assign_parmsList(Global_paramlist_, envir = environment())
 assign_parmsList(paramlist_,  envir = environment())
@@ -14,7 +14,14 @@ assign_parmsList(paramlist_,  envir = environment())
 #                 Processing data from Model_Main   ####
 #*******************************************************************************
 
-load("Inputs/riskShaing_demographics.RData")
+if(policy_type == "hybrid"){
+	load("Inputs/riskShaing_demographics_bf.5_80y.RData")
+} else {
+	load("Inputs/riskShaing_demographics_80y.RData")
+}
+
+
+
 # df_actives
 # df_retirees
 # decrement
@@ -33,7 +40,9 @@ df_decrement %>% head
 
 ## Retirees 
 df_retirees %<>% 
-	filter(!is.na(year)) %>% 
+	filter(!is.na(year),
+				 year <= nyear,
+				 ) %>% 
   rename(B_ret  = B.r,
 	  		 AL_ret = ALx.r,
 		  	 n_ret  = number.r,
@@ -65,6 +74,7 @@ df_retirees	%<>%  filter( !(ret_year == 1 & (!start_year %in% start_years)))
 
 ## Active members
 df_actives %<>% 
+	filter(year <= nyear) %>% 
 	rename(n_act  = number.a,
 				 salary = sx,
 				 AL_act = ALx,
