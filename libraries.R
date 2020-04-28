@@ -34,7 +34,33 @@ options(dplyr.print_max = 100) # default is 20
 library(polynom)
 
 
+#*******************************************************************************
+#                         Tools and functions                               ####  
+#*******************************************************************************
+
 source("Functions.R")
+
+
+save_figure <- function(fig_ob, fig_folder = Outputs_folder,  fig_type = "png", ...){
+	figure_name <- deparse(substitute(fig_ob))
+	ggsave(paste0(fig_folder, figure_name, ".", fig_type ), fig_ob, ... )
+	
+}
+
+
+get_results <- function(IO_folder, Pattern = "^Outputs"){
+	
+	fn <- function(x) {
+		load(paste0(IO_folder, "/", x))
+		return(outputs_list$results)
+	}
+	
+	file_select <- dir(IO_folder, Pattern)
+	results_all <- adply(file_select, 1, fn) %>% select(-X1)
+}
+
+
+
 
 
 #*******************************************************************************
