@@ -15,9 +15,9 @@ assign_parmsList(paramlist_,  envir = environment())
 #*******************************************************************************
 
 if(policy_type == "hybrid"){
-	load("Inputs/riskShaing_demographics_bf.5_80y.RData")
+	load("Inputs/riskShaing_demographics_bf.5_100y.RData")
 } else {
-	load("Inputs/riskShaing_demographics_80y.RData")
+	load("Inputs/riskShaing_demographics_100y.RData")
 }
 
 
@@ -1123,7 +1123,7 @@ penSim_results <-
 }
 
 
-# Global_paramlist$nsim <- 5
+# Global_paramlist$nsim <- 10
 # paramlist$cola_type <- "EEC_sharedADC"
 
 {
@@ -1133,13 +1133,18 @@ penSim_results <-
 	suppressMessages(gc())
 }
 
-penSim_DB_results %>% filter(sim == 0) %>% print()
+
+
+# penSim_DB_results %>% filter(sim == 0) %>% print()
 
 # penSim_DB_results %>% filter(sim == 1) %>% select(year, C, FR_MA, FR_MA_baseline, FR_MA_solved, cola_actual, NC, C, i.r,  NC, SC, AL_baseline, AL_solved) %>%  print()
 
 
-
-
+# load("Outputs_90y/Outputs_EEC_sharedADC.RData")
+# outputs_list$results%>% filter(sim == 0) %>% print()
+# outputs_list$results %>% filter(sim %in% c(1, 500))
+# 
+# 
 
 
 
