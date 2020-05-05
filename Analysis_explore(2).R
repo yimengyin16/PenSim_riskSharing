@@ -50,11 +50,11 @@ results_all <- get_results(dir_modelResults) %>%
 	filter(runname %in% names(run_labels)) %>% 
 	select(runname, sim, year, everything()) %>% 
 	mutate(runname_wlabel =  factor(runname, levels = run_levels, labels = run_labels),
-				 runname = factor(runname, levels = run_levels),
+				 runname = factor(runname, levels = run_levels)
 				 #ERC_PR = ERC / salary,
 				 #ERC2   = NC.ER + SC, # For SDRS policy analysis only
 				 #ERC2_PR = ERC2 / salary
-				 PR = EEC/EEC_PR
+				 # PR = EEC/EEC_PR
 				 ) 
 
 results_all %>% head
@@ -64,6 +64,43 @@ results_all$runname %>% unique
 dr    <- 0.075 # discount rate
 infl  <- 0.02  # assumed inflation rate
 Nyear <- 40    # Number of sim years for contribution analysis
+cola_baseline <- 0.015
+
+DC_EECrate <- 0.03
+DC_ERCrate <- 0.03
+
+
+#*******************************************************************************
+##                      Create additional variables                         ####
+#*******************************************************************************
+
+# Add DC contributions for hybrid plans
+
+results_all %<>% 
+	mutate(EEC_DB = EEC,
+				 ERC_DB = ERC,
+				 C_DB   = EEC_DB + ERC_DB, 
+				 
+				 EEC_DC = ifelse(runname == "hybrid_DB", salary * DC_EECrate, 0),
+				 ERC_DC = ifelse(runname == "hybrid_DB", salary * DC_ERCrate, 0),
+				 C_DC   = EEC_DC + ERC_DC, 
+				 
+         EEC = EEC_DB + EEC_DC,
+         ERC = ERC_DB + ERC_DC,
+         
+         C = EEC + ERC,
+         
+				 ERC_PR = ERC / salary,
+				 EEC_PR = EEC / salary
+				 )
+
+# results_all %>% filter(runname %in% c("baseline", "hybrid_DB"), sim == 0, year <=20) %>% 
+select(runname, year, C_DB, C_DC)
+
+
+
+
+
 
 #*******************************************************************************
 ##              Measures: Employer and employee contribution                ####
@@ -183,7 +220,7 @@ df_bySim
 
 
 #*******************************************************************************
-##              Measures:  Benefit for a single cohort                      ####
+##              Measures:  Benefit for a single cohort in DB                ####
 #*******************************************************************************
 
 # Cohorts to examine:
@@ -323,6 +360,153 @@ df_benefit_qtile_y15 <-
 
 df_benefit_qtile_y15 %>% select(runname, starts_with("B_PV"))
 df_benefit_qtile_y15 %>% select(runname, starts_with("B_real"))
+
+
+
+
+#*******************************************************************************
+##              Measures: Benefit risk of DC                ####
+#*******************************************************************************
+
+# Need to use salary in the input demographic data
+load("Inputs/riskShaing_demographics_bf.5_100y.RData")
+
+# cohort: ea = 25, yos = 0 in year 1, retirement year =  36 (same as the 1st cohort in the lifetime analysis)
+
+df_actives_ea25_dc <- 
+	df_actives %>% 
+	filter(ea ==  25, year - (age-ea) == 1) %>% 
+	select(ea, age, year, N = number.a, salary_indiv = sx, PVFBx_DB_indiv = PVFBx.r, NCx_DB_indiv = NCx)
+df_actives_ea25_dc
+
+df_retirees_ea25_dc <- 
+	df_retirees %>% filter(ea ==  25, year - (age-ea) == 1, year.retire == 36) %>% 
+	select(ea, age, year, N = number.r, B_DB_indiv = B.r, PVFBx_DB_indiv = ALx.r, ax.r)
+df_retirees_ea25_dc
+
+df_ea25_dc <-  
+	bind_rows(df_actives_ea25_dc, 
+						df_retirees_ea25_dc) %>% 
+	mutate(C_DC_indiv = salary_indiv * (DC_EECrate + DC_ERCrate), 
+		     fct_dec    = N /N[year == 1]) %>% 
+	mutate_all(list(na2zero))
+df_ea25_dc
+
+
+
+# Merge to simulation results and calculate contributions and benefit 
+df_ea25_dc <- 
+	results_all %>% 
+	filter(sim >= 0, year %in% 1:76, runname == "hybrid_DB") %>% 
+	select(runname, runname_wlabel, sim, year, policy_type, i.r) %>% 
+	left_join(df_ea25_dc, by = "year") %>% 
+	group_by(runname, sim)
+df_ea25_dc
+
+# Calculate DC balance for an individual
+df_ea25_dc %<>%
+	group_by(runname, sim) %>% 
+	mutate(
+		B_DC_indiv = 0, 
+		DC_balance_indiv = 0,
+		DC_balance_indiv = ifelse(age<=60, fnC(DC_balance_indiv, C_DC_indiv, i.r), 0),
+		NC_PR = NCx_DB_indiv / salary_indiv
+		)
+
+# Calculate DC benefit
+# Assumptions:
+#  - balance at 60 is converted to a life annuity using the same discount rate and 
+#    decrements as DB plan
+
+
+df_ea25_dc %<>%
+	group_by(runname, sim) %>% 
+	mutate(
+		B_DC_indiv = ifelse(age == 60, DC_balance_indiv / ax.r, 0),
+		B_DC_indiv = ifelse(age >= 60, B_DC_indiv[age == 60] * (1+cola_baseline)^(age - 60), 0),
+		DC_balance_indiv = getBalanceC(DC_balance_indiv, C_DC_indiv, B_DC_indiv, i.r)
+	)
+df_ea25_dc 
+# NC rate for DB component is 4.56% 
+
+
+# Distribution account balance at age 60
+df_ea25_dc_blc_qtile <- 
+df_ea25_dc %>%
+	group_by(runname) %>% 
+	filter(sim>0, age == 60) %>%
+	summarize(PVFB_DB = mean(PVFBx_DB_indiv),
+						
+						DC_balance_avg = mean(DC_balance_indiv),
+						DC_balance_q90 = quantile(DC_balance_indiv, 0.90),
+						DC_balance_q75 = quantile(DC_balance_indiv, 0.75),
+						DC_balance_q50 = quantile(DC_balance_indiv, 0.50),
+						DC_balance_q25 = quantile(DC_balance_indiv, 0.25),
+						DC_balance_q10 = quantile(DC_balance_indiv, 0.1),
+						
+						
+						DB_B = mean(B_DB_indiv),
+						
+						B_DC_avg = mean(B_DC_indiv),
+						B_DC_q90 = quantile(B_DC_indiv, 0.90),
+						B_DC_q75 = quantile(B_DC_indiv, 0.75),
+						B_DC_q50 = quantile(B_DC_indiv, 0.50),
+						B_DC_q25 = quantile(B_DC_indiv, 0.25),
+						B_DC_q10 = quantile(B_DC_indiv, 0.1)
+						
+						
+						)
+df_ea25_dc_blc_qtile 	
+
+df_ea25_dc_blc_qtile %>% select(runname, PVFB_DB, starts_with("DC_balance"))
+df_ea25_dc_blc_qtile %>% select(runname, DB_B,    starts_with("B_DC"))
+
+
+df_ea25_dc %>% filter(sim>=0,  age == 60) %>% 
+	ungroup %>% 
+	ggplot(aes(x = DC_balance_indiv)) + 
+	geom_histogram(bins = 50)
+
+df_ea25_dc %>% filter(sim>=0,  age == 60) %>% 
+	ungroup %>% 
+	ggplot(aes(x = B_DC_indiv)) + 
+	geom_histogram(bins = 50)
+
+# Notes:
+#  - Although the total cost rate of the the DC component (6% of payroll) is very close
+#    to the aggregate NC rate of the DB plan, it may differ from the NC rates of individual
+#    ea cohorts.(the higher the ea, the higher the NC rate). 
+#  - For the cohort ea = 25, the NC rate is 4.56%, which is lower than the DC contribution 
+#    rate of 6%. However, the PVB upon retirement age is much higher the mean and median
+#    DC account balance (52k, 37k, 35k)
+#  - But this may not be a fair comparison of the level of benefit:
+#     - DC plan: member can claim the DC account balance upon separation before retirement.
+#     - DB plan: Only service retirement is modeled, so it is assumed that the member
+#                will receive no benefit upon separation before retirement (age 65). 
+#                This actually explains why the individual PVB of DB upon retirement is so high
+#                compared to the contribution rate (NC): the contributions made by members who have 
+#                separated before age 60 are all used to support the retirement benefit for those 
+#                who remain active until retirement (17% of the cohort)
+#  - What is the right question to ask about the DC/hybrid plan benefit? 
+#     - We may want to focus on the uncertainty in final balance and annuity benefit
+#     - It may not be fair to directly compare the benefit level of DB and DC/hybrid, 
+#       because DC better benefit upon separation before retirement (greater flexibility)
+
+
+# Issue
+#  - qxt looks quite high for younger ages and low for older ages. How is this compared
+#    to qxt used in real-world AVs?
+#  - If deferred retirement benefit is important for comparing overall benefit level 
+#    for DB and DC(hybrid), do we need to include it? What it will take to include it? 
+
+
+
+
+
+
+
+
+
 
 
 

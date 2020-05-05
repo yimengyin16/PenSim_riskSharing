@@ -72,9 +72,16 @@ assign_parmsList(paramlist_,  envir = environment())
 
 ## Active members
 
-load("Inputs/riskShaing_demographics.RData")
+if(policy_type == "hybrid"){
+	load("Inputs/riskShaing_demographics_bf.5_100y.RData")
+} else {
+	load("Inputs/riskShaing_demographics_100y.RData")
+}
+
+
 
 df_actives %<>% 
+	filter(year <= nyear) %>% 
 	rename(
 		     n_act  = number.a,
 				 salary = sx,

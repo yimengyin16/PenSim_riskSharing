@@ -65,6 +65,23 @@ cppFunction('NumericVector fnC(NumericVector balance, NumericVector C, NumericVe
 
 
 
+cppFunction('NumericVector getBalanceC(NumericVector balance, NumericVector C, NumericVector B, NumericVector r) {
+	int N = balance.size();
+	NumericVector out(N);
+	
+	out[0] = balance[0];
+	
+	for(int j = 1; j < N; ++j ) {
+		out[j] = (out[j-1] + C[j-1] - B[j-1]) * (1 + r[j-1]);
+	}
+	
+	return out;
+
+}')
+
+
+
+
 
 #**************************************
 #    1. PV of Annuities           #####
