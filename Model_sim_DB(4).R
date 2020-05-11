@@ -3,8 +3,8 @@
 run_sim_regular <- function(paramlist_ = paramlist,
 														Global_paramlist_ = Global_paramlist){
 
-# paramlist_ <- paramlist
-# Global_paramlist_ <- Global_paramlist
+#paramlist_ <- paramlist
+#Global_paramlist_ <- Global_paramlist
 
 assign_parmsList(Global_paramlist_, envir = environment())
 assign_parmsList(paramlist_,  envir = environment())
@@ -226,12 +226,17 @@ sim_retirees0 <-
 	df_retirees %>% 
 	mutate(B_ret  = ifelse(ret_year == year , B_ret, 0), 
 				 AL_ret = ifelse(year == 1 , AL_ret, 0)) %>% 
-	group_by(start_year, ea)
+	#ungroup() %>% 
+	#arrange(start_year, ea)
+	group_by(start_year, ea) 
+	
 
 #x <- sim_retirees %>% filter(ret_year == 1, year == 1)
 #x$n_ret %>% sum
 #sim_retirees %>% filter(ret_year == 2, year == 3)
 
+
+# sim_retirees0 %>% 
 
 
 #******************************************************************************* 
@@ -483,6 +488,8 @@ infl_stoch_ <- infl_stoch
 #                              Simulation                                   ####
 #*******************************************************************************
 
+sim_retirees0 %<>% ungroup() %>% arrange(start_year, ea)
+
 cl <- makeCluster(ncore) 
 registerDoParallel(cl)
 
@@ -505,7 +512,7 @@ penSim_results <- foreach(k = -2:nsim, .packages = c("dplyr", "tidyr", "magrittr
 for (j in 1:nyear){
 	 
 	
-	# j <- 1
+	# j <- 2
 	
 	#***********************************
 	#           Asset value            # 
@@ -546,41 +553,24 @@ for (j in 1:nyear){
 	#penSim$cola_actual
 	
 	# Determine current year's benefit payment and AL for retirees
-	if(j > 1) {
-			sim_retirees <- 
-			mutate(sim_retirees, 
-						 B_ret  = ifelse(year == j & year > ret_year, B_ret[year == j - 1] * (1 + penSim$cola_actual[j - 1]), B_ret),
-						 AL_ret = B_ret * ax.r)
-	} 
-	
-	# sim_retirees0
-	
-	##Exploring faster ways to update B and AL for retirees **********************
-	# 
 	# if(j > 1) {
-	# 
-	# 	sim_retirees %<>% mutate(IfUpdate = (year == j) & (year > ret_year))
-	#    
-	# 	cola_actual_current <- penSim$cola_actual[j - 1]
-	# 	
-	# 	sim_retirees <-
-	# 		mutate(sim_retirees, B_ret  = ifelse(IfUpdate, B_ret[year == j - 1] * (1 + cola_actual_current), B_ret),
+	# 		sim_retirees <-
+	# 		mutate(sim_retirees,
+	# 					 B_ret  = ifelse(year == j & year > ret_year, B_ret[year == j - 1] * (1 + penSim$cola_actual[j - 1]), B_ret),
 	# 					 AL_ret = B_ret * ax.r)
 	# }
-	# 
-	# 
-	# sim_retirees %>% filter(start_year == 4, ea == 44)
-	# 
-	# sim_retirees %>% mutate(B_ret_update = B_ret* cola_actual_current)
-	# 
-	# n <- 2
-	# filter(sim_retirees, year == n) 
-	# filter(sim_retirees, year == n+1, year> ret_year)
-	# 
-	# sim_retirees[sim_retirees$year == n]
-	# sim_retirees %>% filter(year == 4)
-	# sim_retirees %>% filter(year == 2, year > ret_year)
-	# sim_retirees %>% filter(start_year == -33, ea == 25)	
+	
+	if(j > 1) {
+		sim_retirees <-
+			mutate(sim_retirees,
+						 B_ret  = ifelse(year == j & year > ret_year, lag(B_ret, 1, 0) * (1 + penSim$cola_actual[j - 1]), B_ret),
+						 AL_ret = B_ret * ax.r)
+	}
+	
+
+	
+	##Exploring faster ways to update B and AL for retirees **********************
+	#
 	#
 	##****************************************************************************
 	
@@ -1227,7 +1217,7 @@ penSim_results <-
 }
 
 
-Global_paramlist$nsim <- 10
+# Global_paramlist$nsim <- 1000
 # paramlist$cola_type <- "EEC_sharedADC"
 
 {
@@ -1239,16 +1229,15 @@ Global_paramlist$nsim <- 10
 
 
 
-# penSim_DB_results %>% filter(sim == -2) %>% print()
+# penSim_DB_results %>% filter(sim == 1000) %>% print()
 
-penSim_DB_results %>% filter(sim == 6) %>% select(year, C, FR_MA, FR_MA_baseline, FR_MA_solved, cola_actual, NC, C, i.r,  NC, SC, AL_baseline, AL_solved) %>%  print()
+# penSim_DB_results %>% filter(sim == 6) %>% select(year, C, FR_MA, FR_MA_baseline, FR_MA_solved, cola_actual, NC, C, i.r,  NC, SC, AL_baseline, AL_solved) %>%  print()
 
 
 # load("Outputs_90y/Outputs_EEC_sharedADC.RData")
 # outputs_list$results%>% filter(sim == 0) %>% print()
 # outputs_list$results %>% filter(sim %in% c(1, 500))
-# 
-# 
+
 
 
 
