@@ -50,15 +50,16 @@ results_all <- get_results(dir_modelResults) %>%
 	filter(runname %in% names(run_labels)) %>% 
 	select(runname, sim, year, everything()) %>% 
 	mutate(runname_wlabel =  factor(runname, levels = run_levels, labels = run_labels),
-				 runname = factor(runname, levels = run_levels)
+				 runname = factor(runname, levels = run_levels),
 				 #ERC_PR = ERC / salary,
 				 #ERC2   = NC.ER + SC, # For SDRS policy analysis only
 				 #ERC2_PR = ERC2 / salary
-				 # PR = EEC/EEC_PR
+				 PR = EEC/EEC_PR
 				 ) 
 
 results_all %>% head
 results_all$runname %>% unique
+
 
 
 dr    <- 0.075 # discount rate
@@ -95,7 +96,7 @@ results_all %<>%
 				 )
 
 # results_all %>% filter(runname %in% c("baseline", "hybrid_DB"), sim == 0, year <=20) %>% 
-select(runname, year, C_DB, C_DC)
+# select(runname, year, C_DB, C_DC)
 
 
 
@@ -502,33 +503,26 @@ df_ea25_dc %>% filter(sim>=0,  age == 60) %>%
 
 
 
-
-
-
-
-
-
-
-
-
 #*******************************************************************************
-##              Measures:  Lifetime analysis                                ####
+##         Measures:  Lifetime analysis Prep data           ####
 #*******************************************************************************
 
 # Need to use salary in the input demographic data
 
 load("Inputs/riskShaing_demographics_100y.RData")
 
-# cohort: ea = 25, yos = 0 in year 1, retirement year =  36
+dr_m1 <- 0.075
+
+## cohort: ea = 25, yos = 0 in year 1, retirement year =  36
 df_actives_ea25 <- 
 	df_actives %>% 
 	filter(ea ==  25, year - (age-ea) == 1) %>% 
-	select(ea, age, year, N = number.a, salary = sx, NCx, ALx)
+	select(ea, age, year, N = number.a, salary_indiv = sx, NCx, ALx, PVFBx.r)
 df_actives_ea25
 
 df_retirees_ea25 <- 
   df_retirees %>% filter(ea ==  25, year - (age-ea) == 1, year.retire == 36) %>% 
-	select(ea, age, year, N = number.r, benefit = B.r)
+	select(ea, age, year, N = number.r, benefit = B.r, PVFBx.r = ALx.r)
 
 df_ea25 <-  
 	bind_rows(df_actives_ea25, 
@@ -541,14 +535,16 @@ df_ea25
 # Merge to simulation results and calculate contributions and benefit 
 df_ea25 <- 
 results_all %>% 
-	filter(sim >= 1, year %in% 1:76) %>% 
-	select(runname, runname_wlabel, year, sim, policy_type, EEC_PR, ERC_PR, AL, C, NC, PR, cola_actual) %>% 
+	filter(sim >= 0, year %in% 1:76) %>% 
+	select(runname, runname_wlabel, year, sim, policy_type, EEC_PR, ERC_PR, AL, C, NC, PR, cola_actual, i.r) %>% 
 	left_join(df_ea25, by = "year") %>% 
 	group_by(runname, sim) %>% 
-	mutate(EEC    = salary * EEC_PR, 
+	mutate(
+		     fct_dr = 1/(1+dr_m1)^(year - 1),
+		     EEC    = salary_indiv * EEC_PR, 
 				 NC_ER  = NCx - EEC,
 				 SC_tot = C - NC,
-				 SC_ER1 = (SC_tot / PR) * salary,
+				 SC_ER1 = (SC_tot / PR) * salary_indiv,
 				 SC_ER2 = SC_tot * (ALx / AL),
 				 ERC1   = NC_ER + SC_ER1,
 				 ERC2   = NC_ER + SC_ER2,
@@ -556,6 +552,12 @@ results_all %>%
 				 benefit = ifelse(age >= 60, benefit[age == 60] * lag(cumprod(1+cola_actual)),0 )
 				 )
 df_ea25	
+
+
+
+#*******************************************************************************
+##         Measures:  Lifetime analysis 1 (PVB/PVC at ea)            ####
+#*******************************************************************************
 
 
 # Measure 1. Distribution of the PVB / PVC ratio at entry age: for a single cohort (ea = 25 or 30)
@@ -567,7 +569,7 @@ dr_m1 <- 0.075
 
 df_ea25_m1 <- 
 	df_ea25 %>% 
-	mutate(fct_dr = 1/(1+dr_m1)^(year - 1)) %>% 
+	# mutate(fct_dr = 1/(1+dr_m1)^(year - 1)) %>% 
 	summarise(runname_wlabel = unique(runname_wlabel),
 		        ERC1_PV = sum(ERC1 * N * fct_dr),
 						ERC2_PV = sum(ERC2 * N * fct_dr),
@@ -582,11 +584,13 @@ df_ea25_m1 <-
 		B_ERC2 = B_PV / ERC2_PV , 
 		B_C1   = B_PV / C1_PV ,
 		B_C2   = B_PV / C2_PV ,
-		B_EEC  = B_PV / EEC_PV
+		B_EEC  = B_PV / EEC_PV,
+		B_NC   = B_PV / NC_PV
 	)
 
 df_ea25_m1_qtile <- 
 df_ea25_m1 %>% 
+	filter(sim >= 1) %>% 
 	summarise(runname_wlabel = unique(runname_wlabel),
 						B_C1_q90 = quantile(B_C1, 0.90, na.rm = T),
 						B_C1_q75 = quantile(B_C1, 0.75, na.rm = T),
@@ -604,61 +608,325 @@ df_ea25_m1 %>%
 						B_EEC_q75 = quantile(B_EEC, 0.75, na.rm = T),
 						B_EEC_q50 = quantile(B_EEC, 0.50, na.rm = T),
 						B_EEC_q25 = quantile(B_EEC, 0.25, na.rm = T),
-						B_EEC_q10 = quantile(B_EEC, 0.1,na.rm = T)
+						B_EEC_q10 = quantile(B_EEC, 0.1,na.rm = T),
+						
+						B_NC_q90 = quantile(B_NC, 0.90, na.rm = T),
+						B_NC_q75 = quantile(B_NC, 0.75, na.rm = T),
+						B_NC_q50 = quantile(B_NC, 0.50, na.rm = T),
+						B_NC_q25 = quantile(B_NC, 0.25, na.rm = T),
+						B_NC_q10 = quantile(B_NC, 0.1,na.rm = T)
+						
 						)
 
 df_ea25_m1_qtile
 df_ea25_m1_qtile %>% select(runname_wlabel, starts_with("B_C1")) # salary based
 df_ea25_m1_qtile %>% select(runname_wlabel, starts_with("B_C2")) # AL based
 df_ea25_m1_qtile %>% select(runname_wlabel, starts_with("B_EEC"))
+df_ea25_m1_qtile %>% select(runname_wlabel, starts_with("B_NC"))
+
+# sim 0, return assumption met
+df_ea25_m1 %>% filter(sim ==0)
 
 
-
-
-
-
-
-# Need to use salary in the input demographic data
-
-load("Inputs/riskShaing_demographics_100y.RData")
-
-# cohort: ea = 25, yos = 0 in year 1, retirement year =  36
-df_actives_ea25 <- 
+## cohort: ea = 25, yos = 0 in year 16, retirement year =  51
+df_actives_ea25_y16 <- 
 	df_actives %>% 
-	filter(ea ==  25, year - (age-ea) == 15) %>% 
-	select(ea, age, year, N = number.a, salary = sx, NCx, ALx)
-df_actives_ea25
+	filter(ea ==  25, year - (age-ea) == 16) %>% 
+	select(ea, age, year, N = number.a, salary_indiv = sx, NCx, ALx)
+df_actives_ea25_y16
 
-df_retirees_ea25 <- 
-	df_retirees %>% filter(ea ==  25, year - (age-ea) == 15, year.retire == 50) %>% 
+df_retirees_ea25_y16 <- 
+	df_retirees %>% filter(ea ==  25, year - (age-ea) == 16, year.retire == 51) %>% 
 	select(ea, age, year, N = number.r, benefit = B.r)
+df_retirees_ea25_y16
 
-df_ea25 <-  
-	bind_rows(df_actives_ea25, 
-						df_retirees_ea25) %>% 
-	mutate(fct_dec = N /N[year == 15]) %>% 
-	mutate_all(funs(na2zero(.)))
-df_ea25
+df_ea25_y16 <-  
+	bind_rows(df_actives_ea25_y16, 
+						df_retirees_ea25_y16) %>% 
+	mutate(fct_dec = N /N[year == 16]) %>% 
+	mutate_all(list(na2zero))
+df_ea25_y16
 
 
 # Merge to simulation results and calculate contributions and benefit 
-df_ea25 <- 
+df_ea25_y16 <- 
 	results_all %>% 
-	filter(sim >= 1, year %in% 15:90) %>% 
+	filter(sim >= 0, year %in% 16:91) %>% 
 	select(runname, runname_wlabel, year, sim, policy_type, EEC_PR, ERC_PR, AL, C, NC, PR, cola_actual) %>% 
-	left_join(df_ea25, by = "year") %>% 
+	left_join(df_ea25_y16, by = "year") %>% 
 	group_by(runname, sim) %>% 
-	mutate(EEC    = salary * EEC_PR, 
+	mutate(EEC    = salary_indiv * EEC_PR, 
 				 NC_ER  = NCx - EEC,
 				 SC_tot = C - NC,
-				 SC_ER1 = (SC_tot / PR) * salary,
+				 SC_ER1 = (SC_tot / PR) * salary_indiv, # Note PR is the total payroll of the plan
 				 SC_ER2 = SC_tot * (ALx / AL),
 				 ERC1   = NC_ER + SC_ER1,
 				 ERC2   = NC_ER + SC_ER2,
 				 cola_actual = ifelse(age>=60, cola_actual, 0),
 				 benefit = ifelse(age >= 60, benefit[age == 60] * lag(cumprod(1+cola_actual)),0 )
 	)
-df_ea25	
+df_ea25_y16
+
+
+# Measure 1. Distribution of the PVB / PVC ratio at entry age: for a single cohort (ea = 25 or 30)
+#   - PVC: PV of sum(salary_t * (ERCrate_t + EECrate_t) for t in working age
+# 	- PVB: PV of sum(B_t) for t in retirement age
+
+# discont rate for this measure
+dr_m1 <- 0.075
+
+df_ea25_y16_m1 <- 
+	df_ea25_y16 %>% 
+	mutate(fct_dr = 1/(1+dr_m1)^(year - 1)) %>% 
+	summarise(runname_wlabel = unique(runname_wlabel),
+						ERC1_PV = sum(ERC1 * N * fct_dr),
+						ERC2_PV = sum(ERC2 * N * fct_dr),
+						EEC_PV = sum(EEC * N * fct_dr),
+						NC_PV  = sum(NCx  * N * fct_dr),
+						C1_PV  = sum( (ERC1+EEC) * N * fct_dr),
+						C2_PV  = sum( (ERC2+EEC) * N * fct_dr),
+						B_PV   = sum(benefit * N * fct_dr)
+	) %>% 
+	mutate(
+		B_ERC1 = B_PV / ERC1_PV ,
+		B_ERC2 = B_PV / ERC2_PV , 
+		B_C1   = B_PV / C1_PV ,
+		B_C2   = B_PV / C2_PV ,
+		B_EEC  = B_PV / EEC_PV,
+		B_NC   = B_PV / NC_PV
+	)
+
+df_ea25_y16_m1_qtile <- 
+	df_ea25_y16_m1 %>% 
+	filter(sim >= 1) %>% 
+	summarise(runname_wlabel = unique(runname_wlabel),
+						B_C1_q90 = quantile(B_C1, 0.90, na.rm = T),
+						B_C1_q75 = quantile(B_C1, 0.75, na.rm = T),
+						B_C1_q50 = quantile(B_C1, 0.50, na.rm = T),
+						B_C1_q25 = quantile(B_C1, 0.25, na.rm = T),
+						B_C1_q10 = quantile(B_C1, 0.1, na.rm = T),
+						
+						B_C2_q90 = quantile(B_C2, 0.90, na.rm = T),
+						B_C2_q75 = quantile(B_C2, 0.75, na.rm = T),
+						B_C2_q50 = quantile(B_C2, 0.50, na.rm = T),
+						B_C2_q25 = quantile(B_C2, 0.25, na.rm = T),
+						B_C2_q10 = quantile(B_C2, 0.1, na.rm = T),
+						
+						B_EEC_q90 = quantile(B_EEC, 0.90, na.rm = T),
+						B_EEC_q75 = quantile(B_EEC, 0.75, na.rm = T),
+						B_EEC_q50 = quantile(B_EEC, 0.50, na.rm = T),
+						B_EEC_q25 = quantile(B_EEC, 0.25, na.rm = T),
+						B_EEC_q10 = quantile(B_EEC, 0.1,na.rm = T),
+						
+						B_NC_q90 = quantile(B_NC, 0.90, na.rm = T),
+						B_NC_q75 = quantile(B_NC, 0.75, na.rm = T),
+						B_NC_q50 = quantile(B_NC, 0.50, na.rm = T),
+						B_NC_q25 = quantile(B_NC, 0.25, na.rm = T),
+						B_NC_q10 = quantile(B_NC, 0.1,na.rm = T)
+						
+	)
+
+df_ea25_y16_m1_qtile
+df_ea25_y16_m1_qtile %>% select(runname_wlabel, starts_with("B_C1")) # salary based
+df_ea25_y16_m1_qtile %>% select(runname_wlabel, starts_with("B_C2")) # AL based
+df_ea25_y16_m1_qtile %>% select(runname_wlabel, starts_with("B_EEC"))
+df_ea25_y16_m1_qtile %>% select(runname_wlabel, starts_with("B_NC"))
+
+
+df_ea25_m1_qtile %>% select(runname_wlabel, starts_with("B_C1")) # salary based
+df_ea25_m1_qtile %>% select(runname_wlabel, starts_with("B_C2")) # AL based
+df_ea25_m1_qtile %>% select(runname_wlabel, starts_with("B_EEC"))
+df_ea25_m1_qtile %>% select(runname_wlabel, starts_with("B_NC"))
+
+
+df_ea25_m1 %>% filter(sim ==0)
+df_ea25_y16_m1 %>% filter(sim ==0)
+
+
+
+# - Even for the cohort starting in year 16, the salary-based B/C ratios are still 
+#   low, although they are higher than the ratios of the cohort starting in year 1.
+# - Why is that? Does the B/C ratio vary a lot across ea groups? If so, is the ea = 25
+#   group representative? 
+
+
+
+#*******************************************************************************
+##         Measures:  Lifetime analysis 2 (max age balance)                 ####
+#*******************************************************************************
+
+## Measure 2
+# PV Final cohort balance / PVB at entry age  
+
+# Final balances are calculated with
+# 1. Cohort normal costs as cash inflow and benefit as cash outflow
+# 2. Cohort contribution (salary-based) as cash inflow and benefit as cash outflow
+# 3. Cohort contribution (liability-based) as cash inflow and benefit as cash outflow
+
+
+# Construct cohort cash flow
+
+df_ea25_m2 <- 
+	df_ea25 %>% 
+	mutate(PVB_ea    = (PVFBx.r * N)[age == ea],
+		     NC_cohort = NCx * N,
+				 C1_cohort = (EEC + ERC1) * N,
+				 C2_cohort = (EEC + ERC2) * N,
+				 B_cohort  = benefit * N,
+				 balance_cohort = 0,
+				 
+				 balanceNC_cohort = getBalanceC(balance_cohort, NC_cohort, B_cohort, i.r), 
+				 balanceC1_cohort = getBalanceC(balance_cohort, C1_cohort, B_cohort, i.r),
+				 balanceC2_cohort = getBalanceC(balance_cohort, C2_cohort, B_cohort, i.r),
+				 
+				 balanceNC_cohort_PV = balanceNC_cohort / (1 + dr_m1)^(age - ea), 
+				 balanceC1_cohort_PV = balanceC1_cohort / (1 + dr_m1)^(age - ea),
+				 balanceC2_cohort_PV = balanceC2_cohort / (1 + dr_m1)^(age - ea),
+				 
+				 PV_ratioM2_NC =  balanceNC_cohort_PV /PVB_ea,
+				 PV_ratioM2_C1 =  balanceC1_cohort_PV /PVB_ea,
+				 PV_ratioM2_C2 =  balanceC2_cohort_PV /PVB_ea
+
+				 ) %>% 
+	select(runname, runname_wlabel, sim, year, ea, age, PVB_ea, ends_with("cohort"), ends_with("cohort_PV" ), starts_with("PV_ratio"))
+
+df_ea25_m2 %>% 
+	filter(year == max(year))
+
+df_ea25_m2 %>% 
+	select(runname, sim, year, 
+											ends_with("cohort_PV"),
+											starts_with("PV_ratio")
+											) %>% 
+	filter(year == max(year))
+
+
+df_ea25_m2_qtile <- 
+df_ea25_m2 %>% 
+	filter(year == max(year), sim >=1) %>% 
+	group_by(runname) %>% 
+	summarise(runname_wlabel = unique(runname_wlabel),
+						
+						
+						PV_ratioM2_NC_avg = mean(PV_ratioM2_NC, na.rm = T),
+						PV_ratioM2_NC_q90 = quantile(PV_ratioM2_NC, 0.90, na.rm = T),
+						PV_ratioM2_NC_q75 = quantile(PV_ratioM2_NC, 0.75, na.rm = T),
+						PV_ratioM2_NC_q50 = quantile(PV_ratioM2_NC, 0.50, na.rm = T),
+						PV_ratioM2_NC_q25 = quantile(PV_ratioM2_NC, 0.25, na.rm = T),
+						PV_ratioM2_NC_q10 = quantile(PV_ratioM2_NC, 0.1, na.rm = T),
+						
+						PV_ratioM2_C1_q90 = quantile(PV_ratioM2_C1, 0.90, na.rm = T),
+						PV_ratioM2_C1_q75 = quantile(PV_ratioM2_C1, 0.75, na.rm = T),
+						PV_ratioM2_C1_q50 = quantile(PV_ratioM2_C1, 0.50, na.rm = T),
+						PV_ratioM2_C1_q25 = quantile(PV_ratioM2_C1, 0.25, na.rm = T),
+						PV_ratioM2_C1_q10 = quantile(PV_ratioM2_C1, 0.1, na.rm = T),
+						
+						PV_ratioM2_C2_q90 = quantile(PV_ratioM2_C2, 0.90, na.rm = T),
+						PV_ratioM2_C2_q75 = quantile(PV_ratioM2_C2, 0.75, na.rm = T),
+						PV_ratioM2_C2_q50 = quantile(PV_ratioM2_C2, 0.50, na.rm = T),
+						PV_ratioM2_C2_q25 = quantile(PV_ratioM2_C2, 0.25, na.rm = T),
+						PV_ratioM2_C2_q10 = quantile(PV_ratioM2_C2, 0.1, na.rm = T)
+						
+						# balanceNC_avg = mean(balanceNC_cohort, na.rm = T),
+						# balanceNC_q90 = quantile(balanceNC_cohort, 0.90, na.rm = T),
+						# balanceNC_q75 = quantile(balanceNC_cohort, 0.75, na.rm = T),
+						# balanceNC_q50 = quantile(balanceNC_cohort, 0.50, na.rm = T),
+						# balanceNC_q25 = quantile(balanceNC_cohort, 0.25, na.rm = T),
+						# balanceNC_q10 = quantile(balanceNC_cohort, 0.1, na.rm = T),
+						# 
+						# balanceC1_q90 = quantile(balanceC1_cohort, 0.90, na.rm = T),
+						# balanceC1_q75 = quantile(balanceC1_cohort, 0.75, na.rm = T),
+						# balanceC1_q50 = quantile(balanceC1_cohort, 0.50, na.rm = T),
+						# balanceC1_q25 = quantile(balanceC1_cohort, 0.25, na.rm = T),
+						# balanceC1_q10 = quantile(balanceC1_cohort, 0.1, na.rm = T),
+						# 
+						# balanceC2_q90 = quantile(balanceC2_cohort, 0.90, na.rm = T),
+						# balanceC2_q75 = quantile(balanceC2_cohort, 0.75, na.rm = T),
+						# balanceC2_q50 = quantile(balanceC2_cohort, 0.50, na.rm = T),
+						# balanceC2_q25 = quantile(balanceC2_cohort, 0.25, na.rm = T),
+						# balanceC2_q10 = quantile(balanceC2_cohort, 0.1, na.rm = T)
+						)
+	
+df_ea25_m2_qtile %>% select(runname, contains("NC"))
+df_ea25_m2_qtile %>% select(runname, contains("C1"))
+df_ea25_m2_qtile %>% select(runname, contains("C2"))
+
+
+#*******************************************************************************
+##         Measures:  Lifetime analysis 3 (ret age balance)                 ####
+#*******************************************************************************
+
+## Measure 3
+# PV cohort ret age balance / PVB at ret age  
+
+# Final balances are calculated with
+# 1. Cohort normal costs as cash inflow and benefit as cash outflow
+# 2. Cohort contribution (salary-based) as cash inflow and benefit as cash outflow
+# 3. Cohort contribution (liability-based) as cash inflow and benefit as cash outflow
+
+
+# Construct cohort cash flow
+
+df_ea25_m3 <- 
+	df_ea25 %>% 
+	mutate(PVB_ret    = (PVFBx.r * N)[age == 60],
+				 NC_cohort = NCx * N,
+				 C1_cohort = (EEC + ERC1) * N,
+				 C2_cohort = (EEC + ERC2) * N,
+				 B_cohort  = benefit * N,
+				 balance_cohort = 0,
+				 
+				 balanceNC_cohort = getBalanceC(balance_cohort, NC_cohort, B_cohort, i.r), 
+				 balanceC1_cohort = getBalanceC(balance_cohort, C1_cohort, B_cohort, i.r),
+				 balanceC2_cohort = getBalanceC(balance_cohort, C2_cohort, B_cohort, i.r),
+				 
+				 PV_ratioM3_NC =  balanceNC_cohort /PVB_ret,
+				 PV_ratioM3_C1 =  balanceC1_cohort /PVB_ret,
+				 PV_ratioM3_C2 =  balanceC2_cohort /PVB_ret
+				 
+	) %>% 
+	select(runname, runname_wlabel, sim, year, ea, age, PVB_ret, ends_with("cohort"), starts_with("PV_ratio"))
+
+df_ea25_m3 %>% 
+	filter(age == 60)
+
+df_ea25_m3 %>% 
+	select(runname, sim, year, age,
+				 ends_with("cohort"),
+				 starts_with("PV_ratio")
+	) %>% 
+	filter(age == 60 )
+
+
+df_ea25_m3_qtile <- 
+	df_ea25_m3 %>% 
+	filter(age == 60, sim >=1) %>% 
+	group_by(runname) %>% 
+	summarise(runname_wlabel = unique(runname_wlabel),
+						
+						PV_ratioM3_NC_avg = mean(PV_ratioM3_NC, na.rm = T),
+						PV_ratioM3_NC_q90 = quantile(PV_ratioM3_NC, 0.90, na.rm = T),
+						PV_ratioM3_NC_q75 = quantile(PV_ratioM3_NC, 0.75, na.rm = T),
+						PV_ratioM3_NC_q50 = quantile(PV_ratioM3_NC, 0.50, na.rm = T),
+						PV_ratioM3_NC_q25 = quantile(PV_ratioM3_NC, 0.25, na.rm = T),
+						PV_ratioM3_NC_q10 = quantile(PV_ratioM3_NC, 0.1, na.rm = T),
+						
+						PV_ratioM3_C1_q90 = quantile(PV_ratioM3_C1, 0.90, na.rm = T),
+						PV_ratioM3_C1_q75 = quantile(PV_ratioM3_C1, 0.75, na.rm = T),
+						PV_ratioM3_C1_q50 = quantile(PV_ratioM3_C1, 0.50, na.rm = T),
+						PV_ratioM3_C1_q25 = quantile(PV_ratioM3_C1, 0.25, na.rm = T),
+						PV_ratioM3_C1_q10 = quantile(PV_ratioM3_C1, 0.1, na.rm = T),
+						
+						PV_ratioM3_C2_q90 = quantile(PV_ratioM3_C2, 0.90, na.rm = T),
+						PV_ratioM3_C2_q75 = quantile(PV_ratioM3_C2, 0.75, na.rm = T),
+						PV_ratioM3_C2_q50 = quantile(PV_ratioM3_C2, 0.50, na.rm = T),
+						PV_ratioM3_C2_q25 = quantile(PV_ratioM3_C2, 0.25, na.rm = T),
+						PV_ratioM3_C2_q10 = quantile(PV_ratioM3_C2, 0.1, na.rm = T)
+	)
+
+df_ea25_m3_qtile %>% select(runname, contains("NC"))
+df_ea25_m3_qtile %>% select(runname, contains("C1"))
+df_ea25_m3_qtile %>% select(runname, contains("C2"))
 
 
 

@@ -350,8 +350,8 @@ i.crisis[2:5] <- c(-0.24, 0.12, 0.12, 0.12)
 # Stochastic returns
 set.seed(1234) ;i.r <- matrix(rnorm(nyear*nsim, i.mean, i.sd), nyear, nsim)
 i.r <- cbind(rep(i.mean - i.sd^2/2, nyear), i.r)
-i.r <- cbind(i.crisis, i.r)
-colnames(i.r) <- -1:nsim
+i.r <- cbind(i.crisis, i.crisis, i.r)
+colnames(i.r) <- -2:nsim
 i.r_ <- i.r
 
 
@@ -362,7 +362,7 @@ i.r_ <- i.r
 # 	cbind(rep(paramlist$i, 5),
 # 				matrix(c(0.0343, 0.0796, 0.1491, 0.0304, 0.0129), 5, Global_paramlist$nsim + 1))
 
-i.r_supplement <- matrix(dr, 5, Global_paramlist$nsim + 2)
+i.r_supplement <- matrix(dr, 5, Global_paramlist$nsim + 3)
 
 i.r_geoReturn <- rbind(i.r_supplement, i.r) %>% 
 	as.data.frame %>% 
@@ -381,8 +381,8 @@ i.r_geoReturn_ <- i.r_geoReturn
 ## Generating stochastic inflation
 set.seed(1234)
 infl_stoch <- matrix(rnorm(nyear*(nsim), infl_mean, infl_sd), nyear, nsim)
-infl_stoch <- cbind(matrix(infl_mean, nyear, 2), infl_stoch)
-colnames(infl_stoch) <- -1:nsim
+infl_stoch <- cbind(matrix(infl_mean, nyear, 3), infl_stoch)
+colnames(infl_stoch) <- -2:nsim
 
 infl_stoch_ <- infl_stoch
 
@@ -395,7 +395,7 @@ cl <- makeCluster(ncore)
 registerDoParallel(cl)
 
 
-penSim_results <- foreach(k = -1:nsim, .packages = c("dplyr", "tidyr", "magrittr", "Rcpp", "polynom")) %dopar% {
+penSim_results <- foreach(k = -2:nsim, .packages = c("dplyr", "tidyr", "magrittr", "Rcpp", "polynom")) %dopar% {
 
 	#  k <- -1 # for simulation runs
 
@@ -741,8 +741,12 @@ for (j in 1:nyear){
 		#  - May want to set floors for EEC and/or ERC
 		
 		penSim$ADC[j] <- with(penSim, max(0, NC[j] + SC[j])) 
-		penSim$EEC[j] <- with(penSim, ifelse(ADC[j] < 0, 0, ADC[j] * EECshare_sharedADC))
-		penSim$ERC[j] <- with(penSim, ADC[j] - EEC[j])
+		# penSim$EEC[j] <- with(penSim, ifelse(ADC[j] < 0, 0, ADC[j] * EECshare_sharedADC))
+		# penSim$ERC[j] <- with(penSim, ADC[j] - EEC[j])
+		
+		penSim$EEC[j] <- with(penSim, max(EECfloor_sharedADC, ADC[j] * EECshare_sharedADC))
+		penSim$ERC[j] <- with(penSim, max(0, ADC[j] - EEC[j]))
+		
 		
 	}
 	
@@ -1106,7 +1110,7 @@ penSim_results <-
 		     cola_type = cola_type,
 				 policy_type = policy_type,
 				 return_scn  = return_scn,
-		     sim     = rep(-1:nsim, each = nyear)) %>% 
+		     sim     = rep(-2:nsim, each = nyear)) %>% 
 	group_by(sim) %>% 
 	mutate(
 				 AL_std  = AL / AL[year == 1],
@@ -1135,7 +1139,7 @@ penSim_results <-
 
 
 
-# penSim_DB_results %>% filter(sim == 0) %>% print()
+# penSim_DB_results %>% filter(sim == -2) %>% print()
 
 # penSim_DB_results %>% filter(sim == 1) %>% select(year, C, FR_MA, FR_MA_baseline, FR_MA_solved, cola_actual, NC, C, i.r,  NC, SC, AL_baseline, AL_solved) %>%  print()
 
