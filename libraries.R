@@ -85,13 +85,23 @@ get_results <- function(IO_folder, Pattern = "^Outputs"){
 									 RIG.yellow.dark)
 	
 	
-	RIG.theme <- function(){
+	theme_yy <- function(){
+		theme_bw() + 
 		theme(panel.grid.major.x = element_line(size = 0.3, color = "gray90"), #element_blank(),
 					panel.grid.minor.x = element_blank(),
 					panel.grid.minor.y = element_blank(),
 					panel.grid.major.y = element_line(size = 0.5, color = "gray80"),
 					plot.title=element_text(hjust=0.5),
 					plot.subtitle=element_text(hjust=0.5),
-					plot.caption=element_text(hjust=0, size = 9))
+					plot.caption=element_text(hjust=0, size = 9),
+					
+					panel.background = element_rect(fill = "grey95",
+																					colour = "grey95",
+																					size = 0.5, linetype = "solid")
+					
+					)
+			
+		
+			
 	}
 }

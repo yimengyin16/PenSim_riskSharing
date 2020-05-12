@@ -876,9 +876,66 @@ df_ea25_m3_qtile %>% select(runname, contains("C1"))
 df_ea25_m3_qtile %>% select(runname, contains("C2"))
 
 
+
 #*******************************************************************************
 ##              Distribution of COLA               ####
 #*******************************************************************************
+
+df_cola <- 
+	results_all %>% 
+	filter(year %in% 1:40) %>% 
+	# filter(year %in% 16:55) %>% 
+	filter(sim >= 1, str_detect(runname, "cola|baseline") ) %>% 
+	group_by(runname, sim) %>%
+	summarise(runname_wlabel = unique(runname_wlabel),
+						cola_avg  = prod(1 + cola_actual[-n()])^(1/(n() - 1)) - 1)
+
+df_cola_qtiles <- 
+	df_cola %>% 
+	summarise(runname_wlabel = unique(runname_wlabel),
+						cola_avg_q10 = quantile(cola_avg, 0.1),
+						cola_avg_q25 = quantile(cola_avg, 0.25),
+						cola_avg_q50 = quantile(cola_avg, 0.50),
+						cola_avg_q75 = quantile(cola_avg, 0.75),
+						cola_avg_q90 = quantile(cola_avg, 0.90)
+						)
+
+
+fig_title    <- "Distributions of 40-year compound annual COLA \nunder different COLA policies"
+fig_subtitle <- "Stochastic scenario"
+fig_cola_qtiles <- 
+	df_cola_qtiles %>% 
+	# filter(runname %in% runname_stch) %>% 
+	ggplot(aes(x = runname_wlabel)) + theme_yy() + 
+	geom_boxplot(width = 0.4,
+							 stat = "identity",
+							 aes(ymin   = cola_avg_q10,
+							 		lower  = cola_avg_q25,
+							 		middle = cola_avg_q50,
+							 		upper  = cola_avg_q75,
+							 		ymax   = cola_avg_q90)
+	) +
+	geom_hline(yintercept =
+						 	filter(df_cola_qtiles, runname == "baseline") %>% pull(cola_avg_q50),
+						 linetype = 2) +
+	coord_cartesian(ylim = c(0, 0.025)) + 
+	scale_y_continuous(breaks = seq(0, 1, 0.0025), labels = percent) + 
+	labs(title = fig_title,
+			 subtitle = fig_subtitle,
+			 x = NULL, 
+			 y = "Compound annual COLA")
+fig_cola_qtiles
+
+# The impact of funded ratio can be very large for FR-based policies: 
+#   - The legacy UAAL was largely accrued during the working years of the current retirees,
+#   - so making the current retirees bear the cost is consistent with inter-generational equity.
+#   - But current retirees will need to bear risk of with all NEW UAALs, which are associated
+#   - with all members (active and retired). 
+# 
+# Return based cola is NOT affected by legacy underfunding.   
+
+
+
 
 
 
