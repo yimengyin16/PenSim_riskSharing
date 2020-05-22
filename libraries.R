@@ -38,10 +38,10 @@ library(polynom)
 #                         Tools and functions                               ####  
 #*******************************************************************************
 
-source("Functions.R")
+source(here::here("Functions.R"))
 
 
-save_figure <- function(fig_ob, fig_folder = Outputs_folder,  fig_type = "png", ...){
+save_figure <- function(fig_ob, fig_folder,  fig_type = "png", ...){
 	figure_name <- deparse(substitute(fig_ob))
 	ggsave(paste0(fig_folder, figure_name, ".", fig_type ), fig_ob, ... )
 	
@@ -60,6 +60,9 @@ get_results <- function(IO_folder, Pattern = "^Outputs"){
 }
 
 
+
+get_nyearMax <- function(x) max(x[-1] - x[1])
+get_nyearMin <- function(x) min(x[-1] - x[1])
 
 
 
@@ -95,8 +98,8 @@ get_results <- function(IO_folder, Pattern = "^Outputs"){
 					plot.subtitle=element_text(hjust=0.5),
 					plot.caption=element_text(hjust=0, size = 9),
 					
-					panel.background = element_rect(fill = "grey95",
-																					colour = "grey95",
+					panel.background = element_rect(fill = "grey98",
+																					colour = "grey98",
 																					size = 0.5, linetype = "solid")
 					
 					)

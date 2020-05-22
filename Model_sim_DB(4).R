@@ -834,9 +834,8 @@ for (j in 1:nyear){
 		# penSim$EEC[j] <- with(penSim, ifelse(ADC[j] < 0, 0, ADC[j] * EECshare_sharedADC))
 		# penSim$ERC[j] <- with(penSim, ADC[j] - EEC[j])
 		
-		penSim$EEC[j] <- with(penSim, max(EECfloor_sharedADC, ADC[j] * EECshare_sharedADC))
+		penSim$EEC[j] <- with(penSim, max(salary[j] * EECfloor_sharedADC, ADC[j] * EECshare_sharedADC))
 		penSim$ERC[j] <- with(penSim, max(0, ADC[j] - EEC[j]))
-		
 		
 	}
 	

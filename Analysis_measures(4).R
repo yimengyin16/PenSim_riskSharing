@@ -245,6 +245,8 @@ grpVals_CAGR40 <-
 						CAGR40_q10 = quantile(CAGR40, 0.10)
 	) 
 
+grpVals_CAGR40
+
 df_CAGR40 %<>% 
 	mutate(grp_CAGR40 = case_when(
 		CAGR40 >= grpVals_CAGR40$CAGR40_q90 ~ 1,
@@ -282,7 +284,7 @@ df %>%
 tab_bySim_ERCgrp <- 
 df %>% 
 	spread(runname, diff_ERCrate_avg)
-tab_bySim_ERCgrp %>% kable(digits = 5)
+tab_bySim_ERCgrp %>% kable(digits = 4)
 
 
 
@@ -325,32 +327,32 @@ df_PVC2 %>% select(-ERC_PV) %>%
 
 # Research questions and Risk measures:
 # 
-# 1. COLA is intended to provide protection against inflation. Even for plans with 
+# 1. COLA is intended to provide protection against inflation. Even for plans with
 #    fixed COLA, few of them provide full protection against inflation (usually fraction of CPI)
-#    Contingent COLA policies can even further weaken the inflation protection: lower 
-#    average COLA; same average COLA but weaker protection in bad scenarios (uncertainty in the strength of protection). 
-#    
+#    Contingent COLA policies can even further weaken the inflation protection: lower
+#    average COLA; same average COLA but weaker protection in bad scenarios (uncertainty in the strength of protection).
+# 
 #    Q: To what extent do contingent COLA policies weaken the (overall) protection against inflation?
-#    
+# 
 #    Measures:
 # 		- PV (discount only or +  + attribution ) Benefit for age 60-100: percentiles
 # 		- Real benefit level at age 80
-#
+# 
 # 2. DB plans are intended to provide secured retirement income. But contingent
-#     COLA policies create uncertainty in the benefit payments. The policies may 
-#     cause deteriorated standard-of-living if retirees experience large declines 
-#     in real benefit payments that may force them to change their consumption behavior. 
-#    
-#    Q: Would contingent COLA policies lead to declines in real benefit that may 
+#     COLA policies create uncertainty in the benefit payments. The policies may
+#     cause deteriorated standard-of-living if retirees experience large declines
+#     in real benefit payments that may force them to change their consumption behavior.
+# 
+#    Q: Would contingent COLA policies lead to declines in real benefit that may
 #       affect retirees welfare?
-#    
+# 
 #    Measures:
-# 			- Max decrease in real benefit in 5-years for a single cohort: percentiles 
+# 			- Max decrease in real benefit in 5-years for a single cohort: percentiles
 #       - Probability of real benefits fall below 90% of starting benefit
-#  
-# 3. Additional question: How would the initial funded ratio affect the impact of 
-#    COLA policies contingent upon funded ratio? 
-#    
+# 
+# 3. Additional question: How would the initial funded ratio affect the impact of
+#    COLA policies contingent upon funded ratio?
+
 
 # Normalize the benefit at age 60 to 100. 
 # Need qxm.r in decrement table 
@@ -421,17 +423,6 @@ df_benefit_qtile_y1 <-
   # B_PV total and B_real_age80
   # runs: baseline, cola_return, cola_FR, cola_SDRS, cola_FR100, cola_SDRS_100
 
-runs_benefit <- c("cola_full", "baseline", "cola_return", "cola_FR", "cola_SDRS", "cola_FR_FR100", "cola_SDRS_FR100")
-runs_benefit_lables <- c(
-	"COLA equal to inflation",
-	"Baseline \nYear-1 funded ratio 100%",
-	"Contingent COLA: \nreturn",
-	"Contingent COLA: \nFunded ratio threshold",
-	"SDRS",
-	"Contingent COLA: \nFunded ratio threshold\nYear-1 funded ratio 100%",
-	"SDRS \nYear-1 funded ratio 100%"
-)
-	
 	
 tab_benefit1 <- 
 df_benefit_qtile_y1 %>% 
@@ -845,13 +836,15 @@ df_ea25_m1 <-
 	df_ea25 %>% 
 	# mutate(fct_dr = 1/(1+dr_m1)^(year - 1)) %>% 
 	summarise(runname_wlabel = unique(runname_wlabel),
-		        ERC1_PV = sum(ERC1 * N * fct_dr),
-						ERC2_PV = sum(ERC2 * N * fct_dr),
-						EEC_PV = sum(EEC * N * fct_dr),
-						NC_PV  = sum(NCx  * N * fct_dr),
-						C1_PV  = sum( (ERC1+EEC) * N * fct_dr),
-						C2_PV  = sum( (ERC2+EEC) * N * fct_dr),
-						B_PV   = sum(benefit * N * fct_dr)
+		        ERC1_PV = sum(ERC_indiv1 * N * fct_dr),
+						ERC2_PV = sum(ERC_indiv2 * N * fct_dr),
+						EEC_PV = sum(EEC_indiv * N * fct_dr),
+						NC_PV  = sum( (NCx.r_indiv + NCx.v_indiv)  * N * fct_dr),
+						C1_PV  = sum( (ERC_indiv1+EEC_indiv) * N * fct_dr),
+						C2_PV  = sum( (ERC_indiv2+EEC_indiv) * N * fct_dr),
+						B.r_PV = sum(B.r_indiv * N * fct_dr), 
+						B.v_PV = (PVFBx.v_indiv * N * fct_dr)[age == ea],
+						B_PV   = sum(B.r_indiv * N * fct_dr) + (PVFBx.v_indiv * N * fct_dr)[age == ea], 
 						) %>% 
 	mutate(
 		B_ERC1 = B_PV / ERC1_PV ,
@@ -893,10 +886,21 @@ df_ea25_m1 %>%
 						)
 
 df_ea25_m1_qtile
-df_ea25_m1_qtile %>% select(runname_wlabel, starts_with("B_C1")) # salary based
-df_ea25_m1_qtile %>% select(runname_wlabel, starts_with("B_C2")) # AL based
-df_ea25_m1_qtile %>% select(runname_wlabel, starts_with("B_EEC"))
-df_ea25_m1_qtile %>% select(runname_wlabel, starts_with("B_NC"))
+
+# starting FR 75%
+df_ea25_m1_qtile[1:9,] %>% select(runname_wlabel, starts_with("B_C1")) # salary based
+df_ea25_m1_qtile[1:9,] %>% select(runname_wlabel, starts_with("B_C2")) # AL based
+df_ea25_m1_qtile[1:9,] %>% select(runname_wlabel, starts_with("B_EEC"))
+df_ea25_m1_qtile[1:9,] %>% select(runname_wlabel, starts_with("B_NC"))
+
+# starting FR 100%
+df_ea25_m1_qtile[10:18,] %>% select(runname_wlabel, starts_with("B_C1")) # salary based
+df_ea25_m1_qtile[10:18,] %>% select(runname_wlabel, starts_with("B_C2")) # AL based
+df_ea25_m1_qtile[10:18,] %>% select(runname_wlabel, starts_with("B_EEC"))
+df_ea25_m1_qtile[10:18,] %>% select(runname_wlabel, starts_with("B_NC"))
+
+
+
 
 # sim 0, return assumption met
 df_ea25_m1 %>% filter(sim ==0)

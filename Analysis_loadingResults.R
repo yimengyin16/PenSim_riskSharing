@@ -3,32 +3,51 @@
 #*******************************************************************************
 
 # Labels for run names 
-run_labels <- c(
+run_labels_FR75 <- c(
 	baseline = "Baseline",
-	
-	cola_return   = "Contingent COLA: \nreturn",
-	cola_FR       = "Contingent COLA: \nFunded ratio threshold",
-	cola_FRramp   = "Contingent COLA: \nFunded ratio ramp",
-	cola_SDRS     = "SDRS fast repayment",
-	
-	EEC_sharedADC = "Contingent EEC: \nShared ADC",
-	EEC_return    = "Contingent EEC: \nReturn",
-	EEC_FR        = "Contingent EEC: \nFunded ratio",
-	
-	hybrid_DB     = "hybrid_DB"
+	cola_return        = "Contingent COLA: \nreturn",
+	cola_FR            = "Contingent COLA: \nFunded ratio threshold",
+	cola_FRramp        = "Contingent COLA: \nFunded ratio ramp",
+	cola_SDRS          = "SDRS fast repayment",
+	EEC_sharedADCfloor = "Contingent EEC: \nShared ADC",
+	EEC_return         = "Contingent EEC: \nReturn",
+	EEC_FR             = "Contingent EEC: \nFunded ratio",
+	hybrid_DB          = "hybrid_DB"
 	# EEC_sharedNC  = "Contingent EEC: \nshared",
 )
 
-run_levels <- names(run_labels)
-run_levels
+run_levels_FR75 <- names(run_labels_FR75)
+run_levels_FR75
+
+
+run_labels_FR100 <- c(
+	baseline_FR100      = "Baseline \nYear-1 funded ratio 100%",
+	cola_return_FR100   = "Contingent COLA: \nreturn\nYear-1 funded ratio 100%",
+	cola_FR_FR100       = "Contingent COLA: \nFunded ratio threshold\nYear-1 funded ratio 100%",
+	cola_FRramp_FR100   = "Contingent COLA: \nFunded ratio ramp\nYear-1 funded ratio 100%",
+	cola_SDRS_FR100     = "SDRS fast repayment\nYear-1 funded ratio 100%",
+	EEC_sharedADCfloor_FR100 = "Contingent EEC: \nShared ADC\nYear-1 funded ratio 100%",
+	EEC_return_FR100    = "Contingent EEC: \nReturn\nYear-1 funded ratio 100%",
+	EEC_FR_FR100        = "Contingent EEC: \nFunded ratio\nYear-1 funded ratio 100%",
+	hybrid_DB_FR100     = "hybrid_DB\nYear-1 funded ratio 100%"
+	# EEC_sharedNC  = "Contingent EEC: \nshared",
+)
+
+run_levels_FR100 <- names(run_labels_FR100)
+run_levels_FR100
+
+run_labels_all <- c(run_labels_FR75, run_labels_FR100)
+run_levels_all <- c(run_levels_FR75, run_levels_FR100)
+
+
 
 
 # Loading results
 results_all <- get_results(dir_modelResults) %>% 
-	filter(runname %in% names(run_labels)) %>% 
+	filter(runname %in% names(run_labels_all)) %>% 
 	select(runname, sim, year, everything()) %>% 
-	mutate(runname_wlabel =  factor(runname, levels = run_levels, labels = run_labels),
-				 runname = factor(runname, levels = run_levels),
+	mutate(runname_wlabel =  factor(runname, levels = run_levels_all, labels = run_labels_all),
+				 runname = factor(runname, levels = run_levels_all),
 				 #ERC_PR = ERC / salary,
 				 #ERC2   = NC.ER + SC, # For SDRS policy analysis only
 				 #ERC2_PR = ERC2 / salary

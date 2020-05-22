@@ -13,7 +13,7 @@ source("libraries.R")
 
 ## Setting folder paths
 # dir_Outputs <- "Outputs_500sims/"
-dir_Outputs <- "Outputs/"
+ dir_Outputs <- "Outputs/"
 
 #******************************************************************************* 
 #                          ## Notes on contingent COLA
