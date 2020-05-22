@@ -21,6 +21,8 @@ https://docs.google.com/document/d/1oi2UEfcrsk6359-zbJTb8DamtbpoEGUFLzcY19njwUI/
 ## Loading packages
 source(here::here("libraries.R"))
 
+theme_set(theme_yy())
+
 #dir_modelResults <- paste0(here::here(),"/Outputs/")
 dir_modelResults <- paste0(here::here(),"/Outputs_500sims/")
 dir_outputs      <- paste0(here::here(),"/Outputs_Analysis/") 
@@ -47,6 +49,18 @@ runnames_show1 <- c("baseline",
 										"EEC_sharedADCfloor",
 										
 										"hybrid_DB")
+
+runnames_show2 <- c("baseline", 
+										
+										"cola_return", 
+										
+										"cola_FR",
+										"cola_FRramp",
+										
+										"cola_FR_FR100",
+										"cola_FRramp_FR100"
+										)
+
 
 
 ```
@@ -92,7 +106,6 @@ source(here::here("Analysis_loadingResults.R"))
 * Max increase in ERC rate in 5 years. This measures the strength of the buffering effects when asset shock occurs.  
 * Measure based on sim-to-sim comparison of ERC rate between baseline and risk-sharing policies 
 * Examine ERC rate under a deterministic asset shock scenario similar to the Great Recession.  
-* Comparing ERC rates with baseline in a deterministic asset shock scenarios. 
 
 
 <br><br/>
@@ -371,26 +384,39 @@ df_PVC_sim2sim2 %>%
 
 
 
+## Dampening effects on contribution volatility
 
-```{r eval=FALSE, include=FALSE}
-## Make tables for draft paper
+**Measure 1** Measures the likelihood of large increases in ERC: Probability of ERC rate rising by more than 10 percentage points within 5 years. 
 
-# Table for PV ERC, w/o final UAAL
-tab_PVERC_qtiles <- 
-df_PVC_qtiles %>% 
-	select(runname, contains("ERC_PV")) %>% 
-	gather(qtile, value, -runname) %>% 
-	mutate(qtile = factor(qtile) %>% fct_inorder()) %>% 
-	mutate(value = 100 * value / value[runname == "baseline" & qtile == "ERC_PV_q50"]) %>% 
-	spread(runname, value)
 
-# tab_PVERC_qtiles %>% kable(digits = 1)
+```{r echo = FALSE}
 
-tab_PVERC_qtiles %>% select(qtile, one_of(policy_select)) %>% knitr::kable(digits = 1, caption = "PV ERC, FR=75%", format = 'pandoc')
+df_ERC_hike <-  
+  results_stch_FR75 %>% 
+	as_tibble() %>% 
+	select(runname, sim, year, ERC_PR) %>% 
+	group_by(runname, sim) %>% 
+	mutate(ERC_hike = cumany( ERC_PR - lag(ERC_PR, 5, Inf) > 0.1) ) %>% 
+	group_by(runname, year) %>% 
+	summarise(ERC_hike = sum(ERC_hike)/n())
+
+fig_title <- "Probability of ERC rate rising more than 10% \nwithin 5 years up to the given year"
+df_ERC_hike %>% 
+	filter(runname %in% runnames_show1) %>% 
+	ggplot(aes(x = year, y = ERC_hike, color = runname)) +  
+	geom_line() +
+	geom_point() + 
+	scale_color_manual(values = c("black", brewer_pal(type = "qual", palette = "Paired")(6) )) + 
+	scale_y_continuous(labels = function(x) percent(x, accuracy = 1)) + 
+	labs(title = fig_title,
+			 x = "Year",
+			 y = "Probability",
+			 color = "Policy"
+			 )
+	
 ```
 
-
-## Impact on contribution volatility
+**Measure 2** Measures to what extent risk-sharing policies can buffer the impact of asset shock occurs: Max increase in ERC rate in 5 years.  
 
 ```{r echo= FALSE}
 # Table of max increase in ERC rate in 5 years
@@ -406,7 +432,7 @@ df_ERCMaxChg_qtile %>%
 # tab_ERCMaxChg_qtiles %>% kable(digits = 2)
 
 tab_ERCMaxChg_qtiles %>% 
-	select(qtile, one_of(policy_select)) %>% 
+	select(qtile, one_of(runnames_show1)) %>% 
 	knitr::kable(digits = 2, caption = "Max 5-year ERC change, FR=75%", format = 'pandoc')
 
 
@@ -415,12 +441,10 @@ tab_ERCMaxChg_qtiles %>%
 
 ```
 
-## Impact of policy parameters
 
+**Measure 3** Measure based on sim-to-sim comparison of ERC rate between baseline and risk-sharing policies. 
 
-
-
-```{r sim2sim_prep, eval=FALSE, include=FALSE}
+```{r sim2sim_prep, echo=FALSE, warning=FALSE}
 ### EXPLORE
 
 ## "sim-to-sim" comparison 
@@ -443,20 +467,9 @@ df_bySim_FR75 <-
 				 EEC_PR_diffBySim = EEC_PR - EEC_PR_baseline,
 				 EEC_diffBySim    = EEC - EEC_baseline
 				 ) 
-	
-df_bySim_FR75 %>% 
-	filter(runname != "baseline") 
 
-```
-
-
-
-
-```{r sim2sim_1, eval=FALSE, include=FALSE}
-### EXPLORE
 
 # **Sim-to-sim compariosn 1**: quantile differences across all sims and years, difference in ERC rate
-
 tab_bySim_ERCptiles <- 
 df_bySim_FR75 %>% 
 	filter(runname != "baseline") %>% 
@@ -470,14 +483,43 @@ df_bySim_FR75 %>%
 	gather(ptile, values, -runname) %>% 
 	mutate(ptile = factor(ptile) %>% fct_inorder()) %>% 
 	spread(runname, values)
-tab_bySim_ERCptiles %>% knitr::kable(digits = 5)
 
+
+tab_bySim_ERCptiles %>% 
+	select(ptile, one_of(runnames_show1)) %>%  
+	mutate_at(vars(-ptile), ~.*100) %>% 
+	kable(digits = 2, caption = "Sim-to-sim differences of ERC rate across all sim-year observations (%), FR=75%", format = 'pandoc')
+	
 ```
 
 
+**Other measures**
 
+- Deterministic asset shock scenario: will help policymakers understand the effect of risk-sharing policies in context. Also serves as a deterministic version of measure2 above.   
+
+
+## Impact of policy parameters (TODO)
 
 ```{r eval=FALSE, include=FALSE}
+### EXPLORE
+
+## Make tables for draft paper
+
+# Table for PV ERC, w/o final UAAL
+tab_PVERC_qtiles <- 
+df_PVC_qtiles %>% 
+	select(runname, contains("ERC_PV")) %>% 
+	gather(qtile, value, -runname) %>% 
+	mutate(qtile = factor(qtile) %>% fct_inorder()) %>% 
+	mutate(value = 100 * value / value[runname == "baseline" & qtile == "ERC_PV_q50"]) %>% 
+	spread(runname, value)
+
+# tab_PVERC_qtiles %>% kable(digits = 1)
+
+tab_PVERC_qtiles %>% select(qtile, one_of(policy_select)) %>% knitr::kable(digits = 1, caption = "PV ERC, FR=75%", format = 'pandoc')
+```
+
+```{r sim2sim_2, eval=FALSE, include=FALSE}
 ### EXPLORE
 # **Sim-to-sim compariosn 2**: Dividing simulations into 5 groups based 40-year CAGR, difference in ERC rate:
 
@@ -556,38 +598,54 @@ tab_bySim_ERCgrp %>% knitr::kable(digits = 4)
 
 # Analysis of Benefits
 
-Research questions and Risk measures:
 
-1. COLA is intended to provide protection against inflation. Even for plans with
-   fixed COLA, few of them provide full protection against inflation (usually fraction of CPI)
-   Contingent COLA policies can even further weaken the inflation protection: lower
-   average COLA; same average COLA but weaker protection in bad scenarios (uncertainty in the strength of protection).
+**Q1. Impact on the overall benefit level (protection against inflation; focus on total PV benefit)**
 
-   Q: To what extent do contingent COLA policies weaken the (overall) protection against inflation?
+**Question:** To what extent do contingent COLA policies weaken the (overall) protection against inflation?
 
-   Measures:
-	 - PV (discount only or + attribution ) Benefit for age 60-100: percentiles
-	 - Real benefit level at age 80
+COLA is intended to provide protection against inflation. Even for plans with fixed COLA, few of them provide full protection against inflation (usually fraction of CPI) Contingent COLA policies can even further weaken the inflation protection: lower average COLA; same average COLA but weaker protection in bad scenarios (uncertainty in the strength of protection).
 
-2. DB plans are intended to provide secured retirement income. But contingent
-    COLA policies create uncertainty in the benefit payments. The policies may
-    cause deteriorated standard-of-living if retirees experience large declines
-    in real benefit payments that may force them to change their consumption behavior.
+**Measures:**
 
-   Q: Would contingent COLA policies lead to declines in real benefit that may
-      affect retirees welfare?
+- Show distribution of 40-year compound COLA
 
-   Measures:
-	 - Max decrease in real benefit in 5-years for a single cohort: percentiles
-   - Probability of real benefits fall below 90% of starting benefit
+- Two probability based measures for the risk of low overall benefit:
 
-3. Additional question: How would the initial funded ratio affect the impact of
-   COLA policies contingent upon funded ratio?
+	- Risk of failing to protect against inflation, Measure: Prob of PV benefit is below 90% of PV benefit with full inflation protection
+	- Risk of actual overall benefit significantly lower than expected(baseline): Prob of PV benefit is below 90% of PV benefit under baseline
+
+- Distribution of overall benefit level: PV (discount only or + attribution ) Benefit for age 60-100: compared to full projection. The PV values may not be staightforward to understand, but is good to have as a measure for overall benefit. It is also easier to see the tail risk here: how low the PV benefit (campared to full inflation protection or baseline) 
+
+
+
+**Q2. Impact on the stability of retirement income (focus on the variability of annual benefit)**
+
+**Question:** Would contingent COLA policies lead to declines in real benefit that may affect retirees welfare? (Related to Q1 but broader)
+DB plans are intended to provide secured retirement income. But contingent COLA policies create uncertainty in the benefit payments. The policies may cause deteriorated standard-of-living if retirees experience large declines in real benefit payments that may force them to change their consumption behavior.
+
+**Measures:**
+
+- Measures for the risk of experiencing low benefit sometime during retirement
+	- Chance of experiencing low benefit at some point: Prob of real benefits falling below 90% of starting benefit in any year up to a given year
+  - Percentiles of the lowest annual real benefit level in 40 years (pick the lowest real B in each sim, then construct the distribution across all sims)  
+
+- Measures for large decline of benefit in a short period of time
+	- Chance of sharp decline of real benefit: Prob of real benefits falling by 10% of starting benefit in any year up to a given year
+	- Percentiles of max (or 95th ptile) decrease in real benefit in 5-years for a single cohort: percentiles (Tail-risks)
+
+- Range of real benefit level at age 80. Supplemental to other measures. Easier to see the tail risk: how low the real benefit can become (10th percentile)?
+
+
+
+**Additional question:** How would the initial funded ratio affect the impact of COLA policies contingent upon funded ratio?
+
+
+Note: Both interest rate (discount rate) and mortality are taken into account in the calculation of PV
+
 
 
 
 ```{r benefit_prep, include = FALSE}
-
 
 # Cohorts to examine:
 	# Cohort 1: Retired at age 60 in year 1 (1 - 41)
@@ -621,7 +679,7 @@ df_benefit_y1 <-
 				 B_real  = B / (1 + infl)^(age - 60),
 				 B_real_chg5y = rollapply(B_real, width = 6, get_nyearMin, fill = NA, align = "right")
 				 )
-df_benefit_y1 
+# df_benefit_y1 
 
 
 df_benefit_qtile_y1 <- 
@@ -661,27 +719,124 @@ df_benefit_qtile_y1 <-
 
 
 
-runs_benefit <- c("cola_full", "baseline", "cola_return", "cola_FR", "cola_SDRS", "cola_FR_FR100", "cola_SDRS_FR100")
-runs_benefit_lables <- c(
-	"COLA equal to inflation",
-	"Baseline \nYear-1 funded ratio 100%",
-	"Contingent COLA: \nreturn",
-	"Contingent COLA: \nFunded ratio threshold",
-	"SDRS",
-	"Contingent COLA: \nFunded ratio threshold\nYear-1 funded ratio 100%",
-	"SDRS \nYear-1 funded ratio 100%"
-)
+# runs_benefit <- c("cola_full", "baseline", "cola_return", "cola_FR", "cola_SDRS", "cola_FR_FR100", "cola_SDRS_FR100")
+# runs_benefit_lables <- c(
+# 	"COLA equal to inflation",
+# 	"Baseline \nYear-1 funded ratio 100%",
+# 	"Contingent COLA: \nreturn",
+# 	"Contingent COLA: \nFunded ratio threshold",
+# 	"SDRS",
+# 	"Contingent COLA: \nFunded ratio threshold\nYear-1 funded ratio 100%",
+# 	"SDRS \nYear-1 funded ratio 100%"
+# )
 	
+
+# Distribution of 40-year COLA with 75% initial funded ratio
+df_cola <- 
+	results_all %>% 
+	filter(year %in% 1:40) %>% 
+	# filter(year %in% 16:55) %>% 
+	filter(sim >= 1, str_detect(runname, "cola|baseline") ) %>% 
+	group_by(runname, sim) %>%
+	summarise(runname_wlabel = unique(runname_wlabel),
+						cola_avg  = prod(1 + cola_actual[-n()])^(1/(n() - 1)) - 1)
+
+df_cola_qtiles <- 
+	df_cola %>% 
+	summarise(runname_wlabel = unique(runname_wlabel),
+						cola_avg_q10 = quantile(cola_avg, 0.1),
+						cola_avg_q25 = quantile(cola_avg, 0.25),
+						cola_avg_q50 = quantile(cola_avg, 0.50),
+						cola_avg_q75 = quantile(cola_avg, 0.75),
+						cola_avg_q90 = quantile(cola_avg, 0.90)
+						)
+
 
 
 
 ```
 
 
-## **Q1 measures**
 
-* B_PV total and B_real_age80
-* runs: baseline, cola_return, cola_FR, cola_SDRS, cola_FR100, cola_SDRS_100
+## Impact on overall benefit level and protection against inflation
+
+**Dsitribution of 40-year compound COLA**
+
+```{r dist_COLA, fig.width=8, echo = FALSE}
+
+
+fig_title    <- "Distributions of 40-year compound annual COLA \nunder different COLA policies"
+# fig_subtitle <- "Starting funded ratio: 75%"
+fig_cola_qtiles_FR75 <- 
+	df_cola_qtiles %>% 
+	filter(runname %in% runnames_show2) %>% 
+	ggplot(aes(x = runname)) + 
+	geom_boxplot(width = 0.3,
+							 stat = "identity",
+							 aes(ymin   = cola_avg_q10,
+							 		lower  = cola_avg_q25,
+							 		middle = cola_avg_q50,
+							 		upper  = cola_avg_q75,
+							 		ymax   = cola_avg_q90)
+	) +
+	geom_hline(yintercept =
+						 filter(df_cola_qtiles, runname == "baseline") %>% pull(cola_avg_q50),
+						 linetype = 2) +
+	coord_cartesian(ylim = c(0, 0.025)) + 
+	scale_y_continuous(breaks = seq(0, 1, 0.0025), labels = percent) + 
+	labs(title = fig_title,
+			 subtitle = NULL,# fig_subtitle,
+			 x = NULL, 
+			 y = "Compound annual COLA")
+fig_cola_qtiles_FR75
+
+
+```
+
+**Two probability based measures for the risk of low overall benefit**:
+
+- Risk of failing to protect against inflation: Prob of PV benefit is below 90% of PV benefit with full inflation protection
+- Risk of actual overall benefit significantly lower than expected(baseline): Prob of PV benefit is below 90% of PV benefit under baseline
+
+
+```{r echo=FALSE}
+
+df_benefit_PV <- 
+	df_benefit_y1 %>% 
+	summarise(runname_wlabel = unique(runname_wlabel),
+						# B_PV_dr    = sum(B * fct_dr),
+						B_PV_tot   = sum(B* fct_dr * fct_qxm)
+	)
+
+df_low_pvB <- 
+df_benefit_PV %>% 
+	left_join(filter(df_benefit_PV, runname == "cola_full") %>% 
+							ungroup %>%  select(sim, B_PV_tot_full = B_PV_tot), by = "sim") %>% 
+  left_join(filter(df_benefit_PV, runname == "baseline") %>% 
+  						ungroup %>%  select(sim, B_PV_tot_baseline = B_PV_tot), by = "sim") %>% 
+	mutate(dif_full     = B_PV_tot / B_PV_tot_full,
+				 dif_baseline = B_PV_tot / B_PV_tot_baseline
+				 ) %>% 
+	group_by(runname) %>% 
+	summarise(Low_pvB_full_pct90     = 100 * sum(dif_full     <= 0.9)/n(),
+						Low_pvB_baseline_pct90 = 100 * sum(dif_baseline <= 0.9)/n(),
+						
+						Low_pvB_full_pct95     = 100 * sum(dif_full     <= 0.95)/n(),
+						Low_pvB_baseline_pct95 = 100 * sum(dif_baseline <= 0.95)/n(),
+						)
+
+
+df_low_pvB %>% 
+	filter(runname %in% runnames_show2) %>% 
+	mutate(runname = factor(runname, levels = runnames_show2)) %>% 
+	gather(Measure, value, -runname) %>% 
+	spread(runname, value) %>% 
+	kable(digits = 1, caption = "Probability (%) of PV benefit below 90%/95% of that in baseline (cola = 1.5%) or full inflation protection(cola = 2%)", format = 'pandoc')
+	
+```
+
+
+**Distribution of PV Benefit**
 
 ```{r echo = FALSE}
 
@@ -691,75 +846,200 @@ runs_benefit_lables <- c(
 
 tab_benefit1 <- 
 df_benefit_qtile_y1 %>% 
-	filter(runname %in% runs_benefit) %>% 
-	select(runname, starts_with("B_PV_tot"), starts_with("B_real_age80")) %>% 
+	filter(runname %in% c("cola_full", runnames_show2)) %>% 
+	select(runname, starts_with("B_PV_tot")) %>% 
 	gather(Var, values, -runname) %>%
-	mutate(runname = factor(runname, levels= runs_benefit),
-		     Var = factor(Var) %>% fct_inorder(),
+	mutate(runname = factor(runname, levels=  c("cola_full", runnames_show2)),
+		     # Var = factor(Var) %>% fct_inorder(),
 				 values = ifelse(str_detect(Var, "B_PV_tot"),  100 * values / values[runname == "baseline" & Var == "B_PV_tot_q50"], values)
 	) %>% 
 	spread(runname, values) 
-tab_benefit1 %>% knitr::kable(digits = 2)
-
-
+tab_benefit1 %>% knitr::kable(digits = 1)
 
 ```
 
-## **Q2 measures**
+## Impact on the stability of retirement income (variability of annual benefit)
+
+
+**Measures for the risk of experiencing low benefit sometime during retirement**
+
+- Chance of experiencing low benefit in certain years: Prob of real benefits falling below 90% of starting benefit in any year up to a given year
+- Percentiles of the lowest annual real benefit level in 40 years (pick the lowest real B in each sim, then construct the distribution across all sims)  
+
 
 ```{r, echo = FALSE}
+
+df_B_low <- 
+df_benefit_y1 %>% 
+	as_tibble() %>% 
+	select(runname, runname_wlabel, sim, year, B_real) %>% 
+	group_by(runname, sim) %>% 
+	mutate(B_lower90 = cumany(B_real < 90)) %>% 
+	group_by(runname, year) %>% 
+	summarise(B_lower90 = sum(B_lower90) /n())
+	
+
+fig_title <- "Probability of real benefit falling below 90% of starting benefit \nin any year up to a given year"
+df_B_low %>% 
+	filter(runname %in% runnames_show2) %>% 
+	ungroup %>% 
+	mutate(runname = factor(runname, levels= runnames_show2)) %>% 
+	ggplot(aes(x = year, y = B_lower90, color = runname)) +  
+	geom_line() +
+	geom_point() + 
+	scale_color_manual(values = c("black", "grey50", brewer_pal(type = "qual", palette = "Paired")(6) )) + 
+	scale_y_continuous(labels = function(x) percent(x, accuracy = 1)) + 
+	labs(title = fig_title,
+			 x = "Year",
+			 y = "Probability",
+			 color = "Policy"
+			 )
+
+
+df_B_lowest <- 
+df_benefit_y1 %>% 
+	as_tibble() %>% 
+	select(runname, runname_wlabel, sim, year, B_real) %>% 
+	group_by(runname, sim) %>% 
+	summarise(B_lowest = min(B_real)) %>% 
+	summarise(B_lowest_q90 = quantile(B_lowest, 0.9),
+						B_lowest_q50 = quantile(B_lowest, 0.5),
+						B_lowest_q10 = quantile(B_lowest, 0.1)
+						)
+
+
+df_B_lowest %>% 
+	filter(runname %in% runnames_show2) %>% 
+	ungroup %>%
+	mutate(runname = factor(runname, levels= runnames_show2)) %>% 
+	gather(Percentile, value, -runname) %>% 
+	mutate(Percentile = factor(Percentile) %>% fct_inorder()) %>% 
+	spread(runname, value) %>% 
+	kable(digits = 1, caption = "Distribution of the lowest annual real benefit level in 40 years (100 in year 1)", format = 'pandoc')
+	
+	
+```
+
+
+
+
+**Measures for large decline of benefit in a short period of time**
+
+- Chance of sharp decline of real benefit: Prob of real benefits falling by 8% of starting benefit in any year up to a given year (8% is arbitrary for now)
+- Percentiles of max (or 95th ptile) decrease in real benefit in 5-years for a single cohort: percentiles (Tail-risks)
+
+
+
+```{r, echo = FALSE}
+
+df_B_drop <- 
+df_benefit_y1 %>% 
+	as_tibble() %>% 
+	select(runname, runname_wlabel, sim, year, B_real) %>% 
+	group_by(runname, sim) %>% 
+	mutate(B_drop_5 = cumany(B_real - lag(B_real, 5, -Inf) <= -8)) %>% 
+	group_by(runname, year) %>% 
+	summarise(B_drop_5 = sum(B_drop_5) /n())
+
+# df_B_drop	
+
+fig_title <- "Probability of real benefits falling by 8% of starting benefit \nin any year up to a given year"
+df_B_drop %>% 
+	filter(runname %in% runnames_show2) %>% 
+	ungroup %>% 
+	mutate(runname = factor(runname, levels= runnames_show2)) %>% 
+	ggplot(aes(x = year, y = B_drop_5, color = runname)) +  
+	geom_line() +
+	geom_point() + 
+	scale_color_manual(values = c("black", "grey50", brewer_pal(type = "qual", palette = "Paired")(6) )) + 
+	scale_y_continuous(labels = function(x) percent(x, accuracy = 1)) + 
+	labs(title = fig_title,
+			 x = "Year",
+			 y = "Probability",
+			 color = "Policy"
+			 )
+
+
 
 # Max 5-year benefit change
 tab_benefit2 <- 
 df_benefit_qtile_y1 %>% 
-	filter(runname %in% runs_benefit) %>% 
+	filter(runname %in% runnames_show2) %>% 
 	select(runname, starts_with("B_real_chg5yMin")) %>% 
 	gather(Var, values, -runname) %>%
-	mutate(runname = factor(runname, levels= runs_benefit),
+	mutate(runname = factor(runname, levels= runnames_show2),
 				 Var = factor(Var) %>% fct_inorder()
 	) %>% 
-	spread(runname, values) 
-tab_benefit2 %>% knitr::kable(digits = 2)
+	spread(runname, values)
+
+tab_benefit2 %>% 
+	kable(digits = 2,
+				caption = "Distribution of max decrease in real benefit in 5-years", 
+				format = 'pandoc')
 
 
-# Probability of benefit falling below 90% of starting benefit
-df_benefit_probLowBen <- 
-df_benefit_y1 %>% 
-	filter(runname %in% setdiff(runs_benefit,c("baseline", "cola_full"))) %>% 
-	ungroup() %>% 
-	mutate(runname = factor(runname, levels = runs_benefit, labels = runs_benefit_lables)) %>% 
-	group_by(runname, sim) %>% 
-	mutate(B_real_low = cumany(B_real <= 90)) %>% 
-	group_by(runname, year) %>% 
-	summarise(B_real_low = sum(B_real_low)/n()) 
 
 
-fig_title <- "Probability of inflation-adjusted benefit falling below 90% of the year-1 value\n at anytime up ot the given year"
-fig_benefit_probLowBen <- 
-df_benefit_probLowBen %>% 
-	ggplot(aes(y = B_real_low, x = year, color = runname, shape = runname)) + theme_yy() +
-	geom_line() + 
-	geom_point() + 
-	scale_y_continuous(labels = percent) +
-	# scale_color_viridis_d(option = "D", begin = 0.3) + 
-	scale_color_brewer(type = "qual", palette = 3)+
-	labs(title = fig_title,
-			 x = "Year",
-			 y = "Probability",
-		   color = NULL,
-			 shape = NULL) +
-	guides(color = guide_legend(keywidth = 1.5, keyheight = 3))
-fig_benefit_probLowBen
-
-save_figure(fig_benefit_probLowBen, dir_outputs, w = 9, h = 6 )
-
-
+# # Probability of benefit falling below 90% of starting benefit
+# df_benefit_probLowBen <- 
+# df_benefit_y1 %>% 
+# 	filter(runname %in% setdiff(runs_benefit,c("baseline", "cola_full"))) %>% 
+# 	ungroup() %>% 
+# 	mutate(runname = factor(runname, levels = runs_benefit, labels = runs_benefit_lables)) %>% 
+# 	group_by(runname, sim) %>% 
+# 	mutate(B_real_low = cumany(B_real <= 90)) %>% 
+# 	group_by(runname, year) %>% 
+# 	summarise(B_real_low = sum(B_real_low)/n()) 
+# 
+# 
+# fig_title <- "Probability of inflation-adjusted benefit falling below 90% of the year-1 value\n at anytime up ot the given year"
+# fig_benefit_probLowBen <- 
+# df_benefit_probLowBen %>% 
+# 	ggplot(aes(y = B_real_low, x = year, color = runname, shape = runname)) + theme_yy() +
+# 	geom_line() + 
+# 	geom_point() + 
+# 	scale_y_continuous(labels = percent) +
+# 	# scale_color_viridis_d(option = "D", begin = 0.3) + 
+# 	scale_color_brewer(type = "qual", palette = 3)+
+# 	labs(title = fig_title,
+# 			 x = "Year",
+# 			 y = "Probability",
+# 		   color = NULL,
+# 			 shape = NULL) +
+# 	guides(color = guide_legend(keywidth = 1.5, keyheight = 3))
+# fig_benefit_probLowBen
+# 
+# save_figure(fig_benefit_probLowBen, dir_outputs, w = 9, h = 6 )
 
 ```
 
-## Distribution of COLA
 
-```{r, include = FALSE}
+
+**Range of real benefit level at age 80**. Supplemental to other measures. Easier to see the tail risk: how low the real benefit can become (10th percentile)?
+
+```{r echo = FALSE}
+
+## Q1 measures
+  # B_PV total and B_real_age80
+  # runs: baseline, cola_return, cola_FR, cola_SDRS, cola_FR100, cola_SDRS_100
+
+tab_benefit_age80 <- 
+df_benefit_qtile_y1 %>% 
+	filter(runname %in% c("cola_full", runnames_show2)) %>% 
+	select(runname, starts_with("B_real_age80")) %>% 
+	gather(Var, values, -runname) %>%
+	mutate(runname = factor(runname, levels=  c("cola_full", runnames_show2)),
+		     Var = factor(Var) %>% fct_inorder(),
+	) %>% 
+	spread(runname, values) 
+tab_benefit_age80 %>% knitr::kable(digits = 1)
+
+```
+
+
+
+
+```{r eval=FALSE, include=FALSE}
 # Distribution of 40-year COLA with 75% initial funded ratio
 df_cola <- 
 	results_all %>% 
@@ -796,7 +1076,7 @@ df_cola_qtiles_FR100
 ```
 
 
-```{r, echo = FALSE}
+```{r eval=FALSE, include=FALSE}
 fig_title    <- "Distributions of 40-year compound annual COLA \nunder different COLA policies"
 fig_subtitle <- "Starting funded ratio: 75%"
 fig_cola_qtiles_FR75 <- 

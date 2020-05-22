@@ -9,9 +9,9 @@ run_labels_FR75 <- c(
 	cola_FR            = "Contingent COLA: \nFunded ratio threshold",
 	cola_FRramp        = "Contingent COLA: \nFunded ratio ramp",
 	cola_SDRS          = "SDRS fast repayment",
-	EEC_sharedADCfloor = "Contingent EEC: \nShared ADC",
 	EEC_return         = "Contingent EEC: \nReturn",
 	EEC_FR             = "Contingent EEC: \nFunded ratio",
+	EEC_sharedADCfloor = "Contingent EEC: \nShared ADC",
 	hybrid_DB          = "hybrid_DB"
 	# EEC_sharedNC  = "Contingent EEC: \nshared",
 )
@@ -26,9 +26,9 @@ run_labels_FR100 <- c(
 	cola_FR_FR100       = "Contingent COLA: \nFunded ratio threshold\nYear-1 funded ratio 100%",
 	cola_FRramp_FR100   = "Contingent COLA: \nFunded ratio ramp\nYear-1 funded ratio 100%",
 	cola_SDRS_FR100     = "SDRS fast repayment\nYear-1 funded ratio 100%",
-	EEC_sharedADCfloor_FR100 = "Contingent EEC: \nShared ADC\nYear-1 funded ratio 100%",
 	EEC_return_FR100    = "Contingent EEC: \nReturn\nYear-1 funded ratio 100%",
 	EEC_FR_FR100        = "Contingent EEC: \nFunded ratio\nYear-1 funded ratio 100%",
+	EEC_sharedADCfloor_FR100 = "Contingent EEC: \nShared ADC\nYear-1 funded ratio 100%",
 	hybrid_DB_FR100     = "hybrid_DB\nYear-1 funded ratio 100%"
 	# EEC_sharedNC  = "Contingent EEC: \nshared",
 )
