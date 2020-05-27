@@ -30,17 +30,16 @@ For summary variables that each sim corresponds to a single value (eg. PV ERC, P
 
 TODO re 05/26 call
 
-- Removing shared-ADC and FR ramp from figures for the MFC paper
-- CQ2 M1: just show probs for a single year (y10 or 20?)
-- Maybe:
-  - Show upside and downside risks, eg EEC_return policies 
-- CQ2 M2/3: make it into quintile groups
-- Benefit analysis: using an individual as example (year of death known?)
-- BQ2-M1 to table
-- Make table format consistent wherever possible
+- deterministic run
 - plot for trade-off: protection for ER vs EE
+- better way to deal with policy labels
 
+- check cola_return policy
+- CQ2 M2/3: make it into quintile groups [to discuss]
 
+- Maybe:
+  - Benefit analysis: using an individual as example (year of death known?)
+  - Show upside and downside risks, eg EEC_return policies 
 
 
 ```{r Global_settings, include=FALSE}
@@ -50,8 +49,8 @@ source(here::here("libraries.R"))
 
 theme_set(theme_yy())
 
-dir_modelResults <- paste0(here::here(),"/Outputs/")
-# dir_modelResults <- paste0(here::here(),"/Outputs_500sims/")
+# dir_modelResults <- paste0(here::here(),"/Outputs/")
+dir_modelResults <- paste0(here::here(),"/Outputs_500sims/")
 dir_outputs      <- paste0(here::here(),"/Outputs_Analysis/") 
 
 
@@ -73,8 +72,8 @@ runnames_show1 <- c("baseline",
 										"cola_FR", 
 							
 										"EEC_return", 
-										"EEC_FR", 
-										"EEC_sharedADCfloor"
+										"EEC_FR"
+										# "EEC_sharedADCfloor"
 										
 										#"hybrid_DB"
 										)
@@ -84,10 +83,10 @@ runnames_show2 <- c("baseline",
 										"cola_return", 
 										
 										"cola_FR",
-										"cola_FR_FR100",
+										"cola_FR_FR100"
 										
-										"cola_FRramp",
-										"cola_FRramp_FR100"
+										#"cola_FRramp",
+										#"cola_FRramp_FR100"
 										)
 
 
@@ -117,11 +116,11 @@ source(here::here("Analysis_loadingResults.R"))
 1. Sim-to-sim differences between PVC under baseline and PVC under risk sharing policy (40-year) at percentiles of baseline PVC. Calculate the differences in PVC for each of the 2,000 simulations, and present the results at 5 percentiles of the baseline PVC (can be presented as differences in normalized dollar values or differences percentage).
 
 
-2. **Median sim-to-sim differences between PVC under baseline and PVC under risk sharing policy (40-year) in groups of 40-year compound return. Calculate the differences in PVC for each of the 2,000 simulations, and present average differences within 5 groups of 40-year CAGR. (can be presented as differences in normalized dollar values or differences percentage). 
+2. [MFC]Median sim-to-sim differences between PVC under baseline and PVC under risk sharing policy (40-year) in groups of 40-year compound return. Calculate the differences in PVC for each of the 2,000 simulations, and present average differences within 5 groups of 40-year CAGR. (can be presented as differences in normalized dollar values or differences percentage). 
 
 3. Percentiles of the differences from baseline WITHIN each policy (the same row does not correspond to the same sim or group)
 
-4. *Percentiles of the PVC under each policy. This measure is NOT a sim-to-sim comparison, but a comparison of PVC distributions. (distribution of differences vs. difference in distributions.)
+4. [MFC]Percentiles of the PVC under each policy. This measure is NOT a sim-to-sim comparison, but a comparison of PVC distributions. (distribution of differences vs. difference in distributions.)
 
 **Discussion of the measures**
 
@@ -151,8 +150,8 @@ There are two aspects to this question
 
 **Measures**
 
-1. Probability of ERC rate rising by more than 10 percentage points within 5 years. This measures the the likelihood of large increases of ERC
-2. Max increase in ERC rate in 5 years. This measures the strength of the buffering effects when asset shock occurs.  
+1. [MFC] Probability of ERC rate rising by more than 10 percentage points within 5 years. This measures the the likelihood of large increases of ERC
+2. [MFC] Max increase in ERC rate in 5 years. This measures the strength of the buffering effects when asset shock occurs.  
 3. Measure based on sim-to-sim comparison of ERC rate between baseline and risk-sharing policies 
 4. (TODO) Examine ERC rate under a deterministic asset shock scenario similar to the Great Recession. This can help put the results in context.   
 
@@ -234,7 +233,7 @@ df_PVC_qtiles <-
 # Why PV ERC of SDRS is so low, even with final UAAL?
 
 
-## Measure 1, Sim-to-sim comparison of PVC at the same percentile PVC under baseline 
+# Sim-to-sim comparison of PVC at the same percentile PVC under baseline 
 
 # find the sim# corresponding to percentiles of PVC under the baseline policy
 ptiles_measure <- c(ptile90 = 0.9, ptile75 = 0.75, ptile50 = 0.50, ptile25 = 0.25, ptile10 = 0.1)
@@ -252,7 +251,9 @@ df_PVC %>%
 	select(var, Percentile, everything(), -sim, -sim_rank)
 	
 
-## Measure 2, Sim-to-sim differences in 40-year compound return groups
+# Grouping variables
+
+## Grouping by 40-year compound return 
 
 # Dividing simulations into 5 groups based 40-year CAGR, difference in ERC rate:
 #    1) 90th percentile and above []
@@ -296,6 +297,44 @@ df_CAGR40 %<>%
 		# CAGR40 < grpVals_CAGR40$CAGR40_q10 ~ 5,
 		# TRUE ~ NA_real_) 
 	)
+
+
+# Grouping by standard deviation
+df_SD_return <- 
+results_all %>% 
+	filter(runname == "baseline", sim >= 1) %>% 
+	group_by(sim) %>% 
+	summarise(SD_return = sd(i.r)) 
+
+grpVals_SD_return <-
+	df_SD_return %>% 
+	summarise(SD_return_pinf= Inf,
+		        SD_return_q90 = quantile(SD_return, 0.90),
+						SD_return_q75 = quantile(SD_return, 0.75),
+						SD_return_q50 = quantile(SD_return, 0.50),
+						SD_return_q25 = quantile(SD_return, 0.25),
+						SD_return_q10 = quantile(SD_return, 0.10),
+						SD_return_ninf= -Inf,
+	) 
+
+#unlist(grpVals_CAGR40[1,])[-4] 
+#df_CAGR40$CAGR40
+#cut(df_CAGR40$CAGR40, unlist(grpVals_CAGR40[1,])[-4], label = F )
+
+grpVals_SD_return_vector <- unlist(grpVals_SD_return[1,2:6])
+
+df_SD_return %<>% 
+	mutate(
+		grp_SD_return = cut(SD_return, unlist(grpVals_SD_return[1,])[-4], label = F )
+		# grp_CAGR40 = case_when(
+		# CAGR40 >= grpVals_CAGR40$CAGR40_q90 ~ 1,
+		# CAGR40 >= grpVals_CAGR40$CAGR40_q75 & CAGR40 < grpVals_CAGR40$CAGR40_q90 ~ 2,
+		# CAGR40 >= grpVals_CAGR40$CAGR40_q25 & CAGR40 < grpVals_CAGR40$CAGR40_q75 ~ 3,
+		# CAGR40 >= grpVals_CAGR40$CAGR40_q10 & CAGR40 < grpVals_CAGR40$CAGR40_q25 ~ 4,
+		# CAGR40 < grpVals_CAGR40$CAGR40_q10 ~ 5,
+		# TRUE ~ NA_real_) 
+	)
+
 
 # df_CAGR40
 
@@ -410,7 +449,7 @@ df_PVC_sim2sim %>%
 ```
 
 
-**Cost Q1, Measure 2**: Present value of ERC over 40 years compared to baseline: median differences in 5 return groups
+**Cost Q1, Measure 2 [MFC]**: Present value of ERC over 40 years compared to baseline: median differences in 5 return groups
 
 Values in measure 1 are from single simulation runs, which may lead to irregular results due to randomness (the irregularity may be reduced when the number of sims increases). For measure 2, sims are divided into 5 groups by 40-year compound annual return, then we compare the median/mean differences in PV ERC in each group. Note that other grouping methods for sims may give difference results.    
 
@@ -421,8 +460,6 @@ The give groups and their ranges of compound average return are
 - Group3: 25th to 75th percentile (`r round(grpVals_CAGR40_vector[4], 4)*100`% to `r round(grpVals_CAGR40_vector[2], 4)*100`%)
 - Group4: 75th to 90th percentile (`r round(grpVals_CAGR40_vector[2], 4)*100`% to `r round(grpVals_CAGR40_vector[1], 4)*100`%)
 - Group5: higher than 90th percentile (`r round(grpVals_CAGR40_vector[1], 4)*100`%)
-
-TODO: Adding median baseline PV ERC 
 
 
 ```{r, warning=FALSE, echo = FALSE}
@@ -471,11 +508,13 @@ df_PVC_sim2sim2 %>%
 	select(runname, grp_CAGR40 , ERC_PV_diff_pct) %>% 
 	spread(runname, ERC_PV_diff_pct) %>% 
 	select(grp_CAGR40, one_of(runnames_show1)) %>% 
+	left_join(df_PVC_sim2sim2 %>%  # adding median baseline PV ERC in each group
+							filter(runname == "baseline") %>% 
+							ungroup() %>% 
+							select(grp_CAGR40, ERC_PV_baseline = ERC_PV), 
+						by = "grp_CAGR40") %>% 
+	select(grp_CAGR40, ERC_PV_baseline, everything(), -baseline) %>% 
   kable(digits = 1, caption = "Median percentage difference from baseline by return group (%)", format = "pandoc")
-
-
-
-
 
 ```
 
@@ -495,8 +534,9 @@ df_PVC_sim2sim_m3 %>%
 
 
 
-**Cost Q1, Measure 4** Distribution of PV ERC within eachpolicy
+**Cost Q1, Measure 4 [MFC]** Distribution of PV ERC within eachpolicy
 
+TODO: use box plot 
 
 ```{r, warning=FALSE, echo = FALSE}
 
@@ -512,6 +552,35 @@ df_PVC_qtiles %>%
 	kable(digits = 1, caption = "Percentiles of normalized PV ERC within each policy", format = "pandoc")
 
 
+fig_title    <- "Distributions of the present value 40-year employer contribution \nunder different COLA policies"
+df_PVC_qtiles_plot <- 
+  df_PVC_qtiles %>% 
+	mutate_at(vars(-runname,-runname_wlabel), ~ 100 * . / df_PVC_qtiles$ERC_PV_q50[df_PVC_qtiles$runname == "baseline"]) %>% 
+	select(runname, contains("ERC_PV")) %>% 
+	filter(runname %in% runnames_show1) %>% 
+	mutate(runname = factor(runname, levels = runnames_show1)) 
+  
+  df_PVC_qtiles_plot %>% 
+	ggplot(aes(x = runname)) + 
+	geom_boxplot(width = 0.3,
+							 stat = "identity",
+							 aes(ymin   = ERC_PV_q10,
+							 	 	lower   = ERC_PV_q25,
+							 		middle  = ERC_PV_q50,
+							 		upper   = ERC_PV_q75,
+							 		ymax    = ERC_PV_q90)
+	) + 
+	geom_hline(yintercept =
+						 filter(df_PVC_qtiles_plot, runname == "baseline") %>% pull(ERC_PV_q50),
+						 linetype = 2) +
+	coord_cartesian(ylim = c(0, 170)) + 
+	scale_y_continuous(breaks = seq(0, 300, 20)) + 
+	labs(title = fig_title,
+			 subtitle = NULL,# fig_subtitle,
+			 x = NULL, 
+			 y = "Present value of ERC")
+	
+
 ```
 
 
@@ -519,8 +588,9 @@ df_PVC_qtiles %>%
 
 ## Dampening effects on contribution volatility
 
-**Cost Q2, Measure 1** Measures the likelihood of large increases in ERC: Probability of ERC rate rising by more than 10 percentage points within 5 years. 
+**Cost Q2, Measure 1 [MFC]** Measures the likelihood of large increases in ERC: Probability of ERC rate rising by more than 10 percentage points within 5 years. 
 
+Use table instead of the graph in the paper
 
 ```{r echo = FALSE}
 
@@ -546,10 +616,28 @@ df_ERC_hike %>%
 			 y = "Probability",
 			 color = "Policy"
 			 )
+
+
+df_ERC_hike %>% 
+	filter(runname %in% runnames_show1, year %in% c(10, 20)) %>% 
+	spread(runname, ERC_hike) %>% 
+	kable(digits = 2, caption = "Probability of ERC rate rising more than 10% \nwithin a 5-year period in the first 10 or 20 years", format = "pandoc")
+	
+
+
 	
 ```
 
-**Cost Q2, Measure 2** Measures to what extent risk-sharing policies can buffer the impact of asset shock occurs: Max increase in ERC rate in 5 years.  
+**Cost Q2, Measure 2 [MFC]** Measures to what extent risk-sharing policies can buffer the impact of asset shock occurs: Max increase in ERC rate in 5 years.  
+
+Try construct a version of measure 2 in the 5-group format (same row corresponds to same grp)
+
+Possible choice of grouping variable:
+
+  - [MFC]40-year compound return. The same as Q1, easier for the readers, but may not the best one to capture volatility
+  - Measure of overall volatility: eg. standard deviation
+  - Measure of asset shock[Later]: lowest 3- or 5-year geometric return, then look at the ERC increase associated with the shock, or just the max 5-year change
+  
 
 ```{r echo= FALSE}
 # Table of max increase in ERC rate in 5 years
@@ -568,11 +656,49 @@ tab_ERCMaxChg_qtiles %>%
 	select(qtile, one_of(runnames_show1)) %>% 
 	knitr::kable(digits = 2, caption = "Max 5-year ERC change, FR=75%", format = 'pandoc')
 
-
 # Notes:
 #  - why does cola_return policy have the lowest compound COLA but does not have the largest cost reduction effect? 
 
 ```
+
+
+
+```{r echo= FALSE}
+
+
+fun_sum <- median
+# fun_sum <- mean
+
+df_ERCMaxChg %>% 
+	select(runname, sim, ERC_PR_chg5yMax) %>% 
+	mutate(ERC_PR_chg5yMax = 100 * ERC_PR_chg5yMax) %>% 
+	left_join(df_CAGR40, by = "sim") %>% 
+	group_by(runname, grp_CAGR40) %>% 
+	summarise(ERC_PR_chg5yMax_med = fun_sum(ERC_PR_chg5yMax)) %>% 
+  arrange(runname, desc(grp_CAGR40)) %>% 
+	filter(runname %in% runnames_show1) %>% 
+	spread(runname, ERC_PR_chg5yMax_med) %>% 
+	kable(digits = 1, caption = "Max 5-year ERC change in 40-year CAGR groups, starting FR=75%", format = 'pandoc')
+
+
+df_ERCMaxChg %>% 
+	select(runname, sim, ERC_PR_chg5yMax) %>% 
+	mutate(ERC_PR_chg5yMax = 100 * ERC_PR_chg5yMax) %>% 
+	left_join(df_SD_return, by = "sim") %>% 
+	group_by(runname, grp_SD_return) %>% 
+	summarise(ERC_PR_chg5yMax_med = fun_sum(ERC_PR_chg5yMax)) %>% 
+  arrange(runname, desc(grp_SD_return)) %>% 
+	filter(runname %in% runnames_show1) %>% 
+	spread(runname, ERC_PR_chg5yMax_med) %>% 
+	kable(digits = 1, caption = "Max 5-year ERC change in return volatility (SD) groups, starting FR=75%", format = 'pandoc')
+
+
+```
+
+
+
+
+
 
 
 **Cost Q2, Measure 3** Measure based on sim-to-sim comparison of ERC rate between baseline and risk-sharing policies. 
@@ -745,14 +871,14 @@ COLA is intended to provide protection against inflation. Even for plans with fi
 - Show distribution of 40-year compound COLA
 
 1. Two probability based measures for the risk of low overall benefit:
-	- 1.1* Risk of actual overall benefit significantly lower than expected(baseline): Prob of PV benefit is below 90% of PV benefit under baseline
+	- 1.1[MFC] Risk of actual overall benefit significantly lower than expected(baseline): Prob of PV benefit is below 90% of PV benefit under baseline
 	- 1.2 Risk of failing to protect against inflation, Measure: Prob of PV benefit is below 90% of PV benefit with full inflation protection
 
 
 
 2. (TODO) sim-to-sim comparison of PVB: (3 general ways to compare PV-type results)
  - 2.1 differences from baseline at quantiles of baseline PVB (can also be grouped)
- - 2.2* median differences in long-term return groups
+ - 2.2* [MFC] median differences in long-term return groups
  - 2.3 percentiles of differences from baseline PVB 
 
 3.*(?) Distribution of overall benefit level: PV (discount only or + attribution ) Benefit for age 60-100: compared to full projection. The PV values may not be staightforward to understand, but is good to have as a measure for overall benefit. It is also easier to see the tail risk here: how low the PV benefit (campared to full inflation protection or baseline) 
@@ -782,14 +908,14 @@ DB plans are intended to provide secured retirement income. But contingent COLA 
 **Measures:**
 
 1. Measures for the risk of experiencing low benefit sometime during retirement
-	- 1.1 Chance of experiencing low benefit at some point: Prob of real benefits falling below 90% of starting benefit in any year up to a given year
+	- 1.1 [MFC, to table] Chance of experiencing low benefit at some point: Prob of real benefits falling below 90% of starting benefit in any year up to a given year
 	- 1.2 Percentiles of the lowest annual real benefit level in 40 years (pick the lowest real B in each sim, then construct the distribution across all sims)  
 
 2. Measures for large decline of benefit in a short period of time
 	- 2.1 Chance of sharp decline of real benefit: Prob of real benefits falling by 10% of starting benefit in any year up to a given year
-	- 2.2 Percentiles of max (or 95th ptile) decrease in real benefit in 5-years for a single cohort: percentiles (Tail-risks)
+	- 2.2 [MFC, with return grps]Percentiles of max (or 95th ptile) decrease in real benefit in 5-years for a single cohort: percentiles (Tail-risks)
 
-3. Range of real benefit level at age 80. Supplemental to other measures. Easier to see the tail risk: how low the real benefit can become (10th percentile)?
+3. [MFC, with return grps]Range of real benefit level at age 80. Supplemental to other measures. Easier to see the tail risk: how low the real benefit can become (10th percentile)?
 
 
 **Key results**
@@ -955,9 +1081,8 @@ fig_cola_qtiles_FR75
 
 **Benefit Q1, Measure 1: Two probability based measures for the risk of low overall benefit**:
 
-- 1.1 Risk of failing to protect against inflation: Prob of PV benefit is below 90% of PV benefit with full inflation protection
-- 1.2 Risk of actual overall benefit significantly lower than expected(baseline): Prob of PV benefit is below 90% of PV benefit under baseline
-
+- 1.1[MFC] Risk of actual overall benefit significantly lower than expected(baseline): Prob of PV benefit is below 90% of PV benefit under baseline
+- 1.2 Risk of failing to protect against inflation: Prob of PV benefit is below 90% of PV benefit with full inflation protection
 
 ```{r echo=FALSE}
 
@@ -1153,6 +1278,15 @@ df_B_low %>%
 			 )
 
 
+df_B_low %>% 
+	filter(runname %in% runnames_show2, year %in% c(10, 20)) %>% 
+	ungroup() %>% 
+	mutate(runname = factor(runname, levels = runnames_show2)) %>% 
+	spread(runname, B_lower90) %>% 
+	kable(digits = 3, caption = "Probability of real benefit falling below 90% of starting benefit \nin any year up to year 10 and 20", format = "pandoc")
+
+
+
 df_B_lowest <- 
 df_benefit_y1 %>% 
 	as_tibble() %>% 
@@ -1218,25 +1352,45 @@ df_B_drop %>%
 
 
 
-# Max 5-year benefit change
-tab_benefit2 <- 
-df_benefit_qtile_y1 %>% 
+# Max 5-year benefit change: percentiles within policies
+# tab_benefit2 <- 
+# df_benefit_qtile_y1 %>% 
+# 	filter(runname %in% runnames_show2) %>% 
+# 	select(runname, starts_with("B_real_chg5yMin")) %>% 
+# 	gather(Var, values, -runname) %>%
+# 	mutate(runname = factor(runname, levels= runnames_show2),
+# 				 Var = factor(Var) %>% fct_inorder()
+# 	) %>% 
+# 	spread(runname, values)
+# 
+# tab_benefit2 %>% 
+# 	kable(digits = 2,
+# 				caption = "Distribution of max decrease in real benefit in 5-years", 
+# 				format = 'pandoc')
+
+
+
+# Max 5-year benefit change: return groups
+
+fun_sum <- median
+
+df_benefit_y1 %>% 
+  summarise(B_real_chg5yMin = min(B_real_chg5y, na.rm = TRUE),
+						B_real_age80   = B_real[age == 80]) %>% 
+	left_join(df_CAGR40, by = "sim") %>% 
+	group_by(runname, grp_CAGR40) %>% 
+	summarise(B_real_chg5yMin_med = fun_sum(B_real_chg5yMin)) %>% 
+	arrange(runname, desc(grp_CAGR40)) %>% 
 	filter(runname %in% runnames_show2) %>% 
-	select(runname, starts_with("B_real_chg5yMin")) %>% 
-	gather(Var, values, -runname) %>%
-	mutate(runname = factor(runname, levels= runnames_show2),
-				 Var = factor(Var) %>% fct_inorder()
-	) %>% 
-	spread(runname, values)
-
-tab_benefit2 %>% 
-	kable(digits = 2,
-				caption = "Distribution of max decrease in real benefit in 5-years", 
-				format = 'pandoc')
+	ungroup() %>% 
+	mutate(runname = factor(runname, levels = runnames_show2)) %>% 
+	spread(runname, B_real_chg5yMin_med) %>% 
+	kable(digits = 1, caption = "Max 5-year decrease in benefit by 40-year CAGR group, starting FR=75%", format = 'pandoc')
 
 
 
-
+	
+	
 # # Probability of benefit falling below 90% of starting benefit
 # df_benefit_probLowBen <- 
 # df_benefit_y1 %>% 
@@ -1280,16 +1434,38 @@ tab_benefit2 %>%
   # B_PV total and B_real_age80
   # runs: baseline, cola_return, cola_FR, cola_SDRS, cola_FR100, cola_SDRS_100
 
-tab_benefit_age80 <- 
-df_benefit_qtile_y1 %>% 
-	filter(runname %in% c("cola_full", runnames_show2)) %>% 
-	select(runname, starts_with("B_real_age80")) %>% 
-	gather(Var, values, -runname) %>%
-	mutate(runname = factor(runname, levels=  c("cola_full", runnames_show2)),
-		     Var = factor(Var) %>% fct_inorder(),
-	) %>% 
-	spread(runname, values) 
-tab_benefit_age80 %>% knitr::kable(digits = 1)
+# tab_benefit_age80 <- 
+# df_benefit_qtile_y1 %>% 
+# 	filter(runname %in% c("cola_full", runnames_show2)) %>% 
+# 	select(runname, starts_with("B_real_age80")) %>% 
+# 	gather(Var, values, -runname) %>%
+# 	mutate(runname = factor(runname, levels=  c("cola_full", runnames_show2)),
+# 		     Var = factor(Var) %>% fct_inorder(),
+# 	) %>% 
+# 	spread(runname, values) 
+# tab_benefit_age80 %>% knitr::kable(digits = 1)
+# 
+
+
+fun_sum <- median
+
+df_benefit_y1 %>% 
+  summarise(B_real_chg5yMin = min(B_real_chg5y, na.rm = TRUE),
+						B_real_age80   = B_real[age == 80]) %>% 
+	left_join(df_CAGR40, by = "sim") %>% 
+	group_by(runname, grp_CAGR40) %>% 
+	summarise(B_real_age80_med = fun_sum(B_real_age80)) %>% 
+	arrange(runname, desc(grp_CAGR40)) %>% 
+	filter(runname %in% runnames_show2) %>% 
+	ungroup() %>% 
+	mutate(runname = factor(runname, levels = runnames_show2)) %>% 
+	spread(runname, B_real_age80_med) %>% 
+	kable(digits = 1, caption = "Real benefit at age 80 by 40-year CAGR group, starting FR=75%", format = 'pandoc')
+
+
+
+
+
 
 ```
 
