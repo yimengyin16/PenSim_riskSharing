@@ -62,7 +62,7 @@ cppFunction('NumericVector fnC(NumericVector balance, NumericVector C, NumericVe
 	return out;
 
 }')
-
+# Do not include the last year's contribution; need to clarify the timing
 
 
 cppFunction('NumericVector getBalanceC(NumericVector balance, NumericVector C, NumericVector B, NumericVector r) {

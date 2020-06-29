@@ -30,21 +30,34 @@ For summary variables that each sim corresponds to a single value (eg. PV ERC, P
 
 TODO re 05/26 call
 
+- Results for benefits
+- Results for trade-off
+- discussion on contribution
+
+- Risk-measures
+- Modeling method
+- examples in result section
+
+- Clean up tables and figures. 
+- Deterministic asset shock scenario
+
+
+- max 5-year contribution in 10~20 years
+- Examples when explaining tables
+- label return groups
+- levels of titles
+- summary table: explain dots in the table
+
 - deterministic run
-- plot for trade-off: protection for ER vs EE
 - better way to deal with policy labels
 
-- check contingent EEC policies, 
-   - EEC return: use 5/10-year average return, instead of single year return. 
-
-- check cola_return policy
-  -  Check PV cost with 100% funded ratio
-
-- CQ2 M2/3: make it into quintile groups [to discuss]
-
-- Maybe:
+- Later:
   - Benefit analysis: using an individual as example (year of death known?)
   - Show upside and downside risks, eg EEC_return policies 
+  - check contingent EEC policies, 
+     - EEC return: use 5/10-year average return, instead of single year return. 
+
+
 
 
 ```{r Global_settings, include=FALSE}
@@ -54,8 +67,8 @@ source(here::here("libraries.R"))
 
 theme_set(theme_yy())
 
-# dir_modelResults <- paste0(here::here(),"/Outputs/")
-dir_modelResults <- paste0(here::here(),"/Outputs_500sims/")
+dir_modelResults <- paste0(here::here(),"/Outputs/")
+# dir_modelResults <- paste0(here::here(),"/Outputs_500sims/")
 dir_outputs      <- paste0(here::here(),"/Outputs_Analysis/") 
 
 
@@ -190,7 +203,14 @@ There are two aspects to this question
 results_stch_FR75 <-  
   results_all %>% 
 	filter(!str_detect(runname, "FR100")) %>% 
+	# filter(sim >= 1, year %in% 21:40) 
 	filter(sim >= 1, year <= Nyear) 
+
+
+# results_stch_FR100 <-  
+#   results_all %>% 
+# 	filter(str_detect(runname, "FR100")) %>% 
+# 	filter(sim >= 1, year <= Nyear) 
 
 
 ## PV ERC and EEC 
@@ -238,6 +258,9 @@ df_PVC_qtiles <-
 # Why PV ERC of SDRS is so low, even with final UAAL?
 
 
+
+
+
 # Sim-to-sim comparison of PVC at the same percentile PVC under baseline 
 
 # find the sim# corresponding to percentiles of PVC under the baseline policy
@@ -277,11 +300,11 @@ results_all %>%
 grpVals_CAGR40 <-
 	df_CAGR40 %>% 
 	summarise(CAGR40_pinf= Inf,
-		        CAGR40_q90 = quantile(CAGR40, 0.90),
-						CAGR40_q75 = quantile(CAGR40, 0.75),
+		        CAGR40_q90 = quantile(CAGR40, 0.80),
+						CAGR40_q75 = quantile(CAGR40, 0.60),
 						CAGR40_q50 = quantile(CAGR40, 0.50),
-						CAGR40_q25 = quantile(CAGR40, 0.25),
-						CAGR40_q10 = quantile(CAGR40, 0.10),
+						CAGR40_q25 = quantile(CAGR40, 0.40),
+						CAGR40_q10 = quantile(CAGR40, 0.20),
 						CAGR40_ninf= -Inf,
 	) 
 
@@ -314,11 +337,11 @@ results_all %>%
 grpVals_SD_return <-
 	df_SD_return %>% 
 	summarise(SD_return_pinf= Inf,
-		        SD_return_q90 = quantile(SD_return, 0.90),
-						SD_return_q75 = quantile(SD_return, 0.75),
+		        SD_return_q90 = quantile(SD_return, 0.80),
+						SD_return_q75 = quantile(SD_return, 0.60),
 						SD_return_q50 = quantile(SD_return, 0.50),
-						SD_return_q25 = quantile(SD_return, 0.25),
-						SD_return_q10 = quantile(SD_return, 0.10),
+						SD_return_q25 = quantile(SD_return, 0.40),
+						SD_return_q10 = quantile(SD_return, 0.20),
 						SD_return_ninf= -Inf,
 	) 
 
@@ -444,11 +467,25 @@ Calculation:
 
 	
 # 3. Percentage difference compared to baseline in the same row
+# df_PVC_sim2sim %>% 
+# 	mutate_at(vars(-var, -Percentile), ~ 100 * . / df_PVC_sim2sim$baseline[df_PVC_sim2sim$Percentile == "ptile50"]) %>% 
+# 	mutate_at(vars(-var, -Percentile, -baseline), ~  100*(./baseline - 1)) %>% 
+# 	select(var, Percentile, one_of(runnames_show1)) %>% 
+# 	kable(digits = 1, caption = "Percentage difference from the baseline in the same row (%)", format = "pandoc")
+
+x <- 
 df_PVC_sim2sim %>% 
 	mutate_at(vars(-var, -Percentile), ~ 100 * . / df_PVC_sim2sim$baseline[df_PVC_sim2sim$Percentile == "ptile50"]) %>% 
 	mutate_at(vars(-var, -Percentile, -baseline), ~  100*(./baseline - 1)) %>% 
 	select(var, Percentile, one_of(runnames_show1)) %>% 
-	kable(digits = 1, caption = "Percentage difference from the baseline in the same row (%)", format = "pandoc")
+	gt() %>% 
+	fmt_number(
+    columns = 3:7,
+    decimals = 1) %>% 
+	tab_header(
+    title = "Percentage difference from the baseline in the same row (%)"
+  )
+x
 
 
 ```
@@ -460,11 +497,11 @@ Values in measure 1 are from single simulation runs, which may lead to irregular
 
 The give groups and their ranges of compound average return are
 
-- Group1: Lower than 10th percentile (`r round(grpVals_CAGR40_vector[5], 4)*100`%)
-- Group2: 10th to 25th percentile (`r round(grpVals_CAGR40_vector[5], 4)*100`% to `r round(grpVals_CAGR40_vector[4], 4)*100`%)
-- Group3: 25th to 75th percentile (`r round(grpVals_CAGR40_vector[4], 4)*100`% to `r round(grpVals_CAGR40_vector[2], 4)*100`%)
-- Group4: 75th to 90th percentile (`r round(grpVals_CAGR40_vector[2], 4)*100`% to `r round(grpVals_CAGR40_vector[1], 4)*100`%)
-- Group5: higher than 90th percentile (`r round(grpVals_CAGR40_vector[1], 4)*100`%)
+- Group1: Lower than 20th percentile (`r round(grpVals_CAGR40_vector[5], 4)*100`%)
+- Group2: 20th to 40th percentile (`r round(grpVals_CAGR40_vector[5], 4)*100`% to `r round(grpVals_CAGR40_vector[4], 4)*100`%)
+- Group3: 40th to 60th percentile (`r round(grpVals_CAGR40_vector[4], 4)*100`% to `r round(grpVals_CAGR40_vector[2], 4)*100`%)
+- Group4: 60th to 90th percentile (`r round(grpVals_CAGR40_vector[2], 4)*100`% to `r round(grpVals_CAGR40_vector[1], 4)*100`%)
+- Group5: higher than 80th percentile (`r round(grpVals_CAGR40_vector[1], 4)*100`%)
 
 
 ```{r, warning=FALSE, echo = FALSE}
@@ -488,7 +525,7 @@ df_PVC_sim2sim2 %<>%
 	group_by(runname, grp_CAGR40) %>% 
 	summarise(ERC_PV          = fun_sum(ERC_PV),
 						ERC_PV_diff     = fun_sum(ERC_PV_diff),
-						ERC_PV_diff_pct = fun_sum(ERC_PV_diff_pct),
+						ERC_PV_diff_pct = fun_sum(ERC_PV_diff_pct)
 						) %>% 
   arrange(runname, desc(grp_CAGR40))
 
@@ -1236,7 +1273,7 @@ df_PVB_sim2sim_grp <-
 				 B_PV_tot_diff_pct = 100*( B_PV_tot / B_PV_tot_baseline - 1),
 				 
 				 B_PV_tot_drLow_diff     = B_PV_tot_drLow - B_PV_tot_drLow_baseline,
-				 B_PV_tot_drLow_diff_pct = 100*( B_PV_tot_drLow / B_PV_tot_drLow_baseline - 1),
+				 B_PV_tot_drLow_diff_pct = 100*( B_PV_tot_drLow / B_PV_tot_drLow_baseline - 1)
 				 )
 	
 fun_sum <- median
@@ -1545,6 +1582,356 @@ df_benefit_y1 %>%
 
 ```
 
+## Summary of results
+
+```{r trade-off plots, echo = FALSE}
+
+## PV ERC vs PV benefit, grp 1 and 3
+
+df_sum_PVC <-
+	df_PVC %>% 
+	select(runname, sim, ERC_PV) %>% 
+	left_join(filter(df_PVC, runname == "baseline") %>% ungroup %>% select(sim, ERC_PV_baseline = ERC_PV), by = "sim" ) %>% 
+  left_join(df_CAGR40, by = "sim") %>% 
+	mutate(ERC_PV          = 100 * ERC_PV / df_PVC_sim2sim$baseline[df_PVC_sim2sim$Percentile == "ptile50"], 
+		     ERC_PV_baseline = 100 * ERC_PV_baseline / df_PVC_sim2sim$baseline[df_PVC_sim2sim$Percentile == "ptile50"],
+		     ERC_PV_diff     = ERC_PV - ERC_PV_baseline,
+		     ERC_PV_diff_pct = 100*( ERC_PV / ERC_PV_baseline - 1)
+				 ) %>% 
+	group_by(runname, grp_CAGR40) %>% 
+	summarise(ERC_PV          = median(ERC_PV),
+						ERC_PV_diff     = median(ERC_PV_diff),
+						ERC_PV_diff_pct = median(ERC_PV_diff_pct))
+
+
+df_sum_PVB <- 
+  df_benefit_PV %>% 
+	select(-runname_wlabel) %>% 
+	left_join(filter(df_benefit_PV, runname == "baseline") %>% ungroup %>% 
+							select(sim, B_PV_tot_baseline = B_PV_tot, B_PV_tot_drLow_baseline = B_PV_tot_drLow), by = "sim") %>% 
+	left_join(df_CAGR40, by = "sim") %>% 
+	group_by(runname, grp_CAGR40) %>% 
+  mutate(
+		     B_PV_tot_diff     = B_PV_tot - B_PV_tot_baseline,
+				 B_PV_tot_diff_pct = 100*( B_PV_tot / B_PV_tot_baseline - 1),
+				 B_PV_tot_drLow_diff     = B_PV_tot_drLow - B_PV_tot_drLow_baseline,
+				 B_PV_tot_drLow_diff_pct = 100*( B_PV_tot_drLow / B_PV_tot_drLow_baseline - 1)
+				 ) %>% 
+	summarise(B_PV_tot          = median(B_PV_tot),
+						B_PV_tot_diff     = fun_sum(B_PV_tot_diff),
+						B_PV_tot_diff_pct = fun_sum(B_PV_tot_diff_pct),
+						
+						B_PV_tot_drLow    = median(B_PV_tot_drLow),
+						B_PV_tot_drLow_diff     = fun_sum(B_PV_tot_drLow_diff),
+						B_PV_tot_drLow_diff_pct = fun_sum(B_PV_tot_drLow_diff_pct)
+						) %>% 
+	ungroup() %>% 
+	mutate(B_PV_tot       = 100 * B_PV_tot / unique(B_PV_tot[runname == "baseline"]),
+				 B_PV_tot_drLow = 100 * B_PV_tot_drLow / unique(B_PV_tot_drLow[runname == "baseline"])
+				 ) %>% 
+  arrange(runname, desc(grp_CAGR40))
+
+
+df_sum_comparePV <- 
+	left_join(df_sum_PVC, df_sum_PVB, by = c("runname", "grp_CAGR40"))
+
+
+runnames_show_sum <- c("baseline", "cola_return", "cola_FR", "EEC_return", "EEC_FR")  
+
+
+
+df_sum_comparePV %>% 
+	filter(runname %in% runnames_show_sum, grp_CAGR40 %in% c(1, 3)) %>% 
+	mutate(grp_CAGR40 = factor(grp_CAGR40, levels = c(3,1), labels = c("Medium Return", "Low Return"))) %>% 
+	ggplot(aes(x = B_PV_tot_diff_pct, y = -ERC_PV_diff_pct, color = runname)) + 
+	facet_grid(.~grp_CAGR40) + 
+	geom_point() + 
+	scale_color_manual(values = c("grey50", brewer_pal(type = "qual", palette = "Paired")(6))) 
+  # coord_cartesian(xlim = c(-7, 1), ylim = c(-4, 6))
+
+
+
+
+## PV ERC vs net PV benefit (PV benefit - FV EEC paid)
+
+# Salary history for ea = 25, normalized to make starting benefit = 100
+
+load("Inputs/riskShaing_demographics_100y.RData")
+
+dr_m1 <- 0.075
+
+## cohort: ea = 25, yos = 0 in year 1, retirement year =  36
+df_actives_ea25 <- 
+	df_actives %>% 
+	filter(ea ==  25, year - (age-ea) == 1) %>% 
+	select(ea, age, year, 
+				 N = number.a, 
+				 salary_indiv = sx, 
+				 NCx.r_indiv = NCx.r, 
+				 NCx.v_indiv = NCx.v, 
+				 ALx.r_indiv = ALx.r, 
+				 ALx.v_indiv = ALx.v, 
+				 PVFBx.r_indiv = PVFBx.r, 
+				 PVFBx.v_indiv = PVFBx.v)
+df_actives_ea25
+
+df_retirees_ea25 <- 
+  df_retirees %>% filter(ea ==  25, year - (age-ea) == 1, year.retire == 36) %>% 
+	select(ea, age, year, 
+				 N = number.r, 
+				 B.r_indiv = B.r, 
+				 PVFBx.r_indiv = ALx.r)
+
+df_ea25 <-  
+	bind_rows(df_actives_ea25, 
+						df_retirees_ea25) %>% 
+	mutate(fct_dec = N /N[year == 1]) %>% 
+	mutate_all(list(na2zero)) %>% 
+	mutate(salary_indiv_norm = 100 * salary_indiv/ B.r_indiv[age == 60] )
+df_ea25
+
+
+df_ea25_sims <- 
+results_all %>% 
+	filter(sim >= 0, year %in% 1:76) %>% 
+	select(runname, runname_wlabel, year, sim, 
+				 EEC_PR_plan = EEC_PR, 
+				 i.r,
+				 dr) %>% 
+	left_join(select(df_ea25, year, age, salary_indiv_norm), by = "year") %>% 
+	group_by(runname, sim) %>% 
+	mutate(EEC_norm = salary_indiv_norm * EEC_PR_plan)
+
+
+
+## value of FV EEC 
+df_EEC_PV_ea25 <- 
+  df_ea25_sims %>% 
+	filter(age <=60) %>% 
+	mutate(EEC_PV_return = 0,
+				 EEC_PV_return = fnC(EEC_PV_return, EEC_norm, i.r),
+				 
+				 EEC_PV_dr = 0,
+				 EEC_PV_dr     = fnC(EEC_PV_return, EEC_norm, dr)
+				 ) %>% 
+	filter(age ==  60)
+	
+
+# Use runs with FR = 100
+df_EEC_PV_ea25 %<>% 
+	filter(str_detect(runname, "FR100")) %>% 
+	ungroup() 
+	# mutate(runname = str_remove(runname, "_FR100"))
+
+
+# Merge with results
+
+df_sum_PVB_net <- 
+  df_benefit_PV %>% 
+	select(-runname_wlabel) %>% 
+	left_join(df_EEC_PV_ea25 %>% select(runname, sim, EEC_PV_return, EEC_PV_dr), by = c("runname", "sim")) %>% 
+	mutate(B_PVtot_net_return = B_PV_tot - EEC_PV_return,
+				 B_PVtot_net_dr     = B_PV_tot - EEC_PV_dr)
+	
+	
+df_sum_PVB_net %<>% 	
+	left_join(filter(df_sum_PVB_net, runname == "baseline_FR100") %>% 
+							ungroup %>% 
+							select(sim, B_PVtot_net_return_baseline = B_PVtot_net_return, B_PVtot_net_dr_baseline = B_PVtot_net_dr ), by = "sim") %>% 
+	left_join(df_CAGR40, by = "sim") %>% 
+	group_by(runname, grp_CAGR40) %>% 
+  mutate(
+		     # B_PV_tot_diff     = B_PV_tot - B_PV_tot_baseline,
+				 B_PVtot_net_return_diffpct = 100*( B_PVtot_net_return / B_PVtot_net_return_baseline - 1),
+				 B_PVtot_net_dr_diffpct     = 100*( B_PVtot_net_dr / B_PVtot_net_dr_baseline - 1)
+				 ) %>% 
+	summarise( B_PVtot_net_return = median(B_PVtot_net_return),
+						 B_PVtot_net_dr     = median(B_PVtot_net_dr),
+		         B_PVtot_net_return_diffpct = median( B_PVtot_net_return_diffpct),
+		         B_PVtot_net_dr_diffpct     = median( B_PVtot_net_dr_diffpct)
+						) %>% 
+	ungroup() %>% 
+	mutate(B_PVtot_net_return = 100 * B_PVtot_net_return / unique(B_PVtot_net_return[runname == "baseline"]),
+				 B_PVtot_net_dr     = 100 * B_PVtot_net_dr / unique(B_PVtot_net_dr[runname == "baseline"])
+				 ) %>% 
+  arrange(runname, desc(grp_CAGR40))
+
+
+## construct the plot
+df_sum_PVB 
+
+
+# results_stch_FR100 <-  
+#   results_all %>% 
+# 	filter(str_detect(runname, "FR100")) %>% 
+# 	filter(sim >= 1, year <= Nyear) 
+
+
+## PV ERC and EEC 
+df_PVC <- 
+  results_all %>% 
+  filter(str_detect(runname, "FR100")) %>% 
+  filter(sim >= 1, year <= Nyear) %>%  
+	select(runname, runname_wlabel, sim, year, policy_type, ERC, EEC, UAAL) %>% 
+	group_by(runname, sim) %>% 
+	summarise(
+		        runname_wlabel = unique(runname_wlabel),
+						
+		        # PV of ERC
+		        ERC_PV         = sum(ERC / (1 + dr)^(year - 1)),
+						ERCwUAAL_PV    = sum(ERC / (1 + dr)^(year - 1)) + UAAL[year == max(year)] / (1 + unique(dr))^(max(year) - 1),
+						
+						# PV of EEC
+						EEC_PV         = sum(EEC / (1 + dr)^(year - 1))
+						)
+
+
+df_sum_PVC <-
+	df_PVC %>% 
+	select(runname, sim, ERC_PV) %>% 
+	left_join(filter(df_PVC, runname == "baseline_FR100") %>% ungroup %>% select(sim, ERC_PV_baseline = ERC_PV), by = "sim" ) %>% 
+  left_join(df_CAGR40, by = "sim") %>% 
+	mutate(ERC_PV          = 100 * ERC_PV / df_PVC_sim2sim$baseline[df_PVC_sim2sim$Percentile == "ptile50"], 
+		     ERC_PV_baseline = 100 * ERC_PV_baseline / df_PVC_sim2sim$baseline[df_PVC_sim2sim$Percentile == "ptile50"],
+		     ERC_PV_diff     = ERC_PV - ERC_PV_baseline,
+		     ERC_PV_diff_pct = 100*( ERC_PV / ERC_PV_baseline - 1)
+				 ) %>% 
+	group_by(runname, grp_CAGR40) %>% 
+	summarise(ERC_PV          = median(ERC_PV),
+						ERC_PV_diff     = median(ERC_PV_diff),
+						ERC_PV_diff_pct = median(ERC_PV_diff_pct))
+
+
+
+
+
+df_sum_comparePV_net <- 
+	left_join(df_sum_PVC, df_sum_PVB_net, by = c("runname", "grp_CAGR40"))
+
+
+# runnames_show_sum <- c("baseline_FR100", "cola_return_FR100", "cola_FR_FR100", "EEC_return_FR100", "EEC_FR_FR100")  
+# df_sum_comparePV_net %>% 
+# 	ungroup %>% 
+# 	filter(runname %in% runnames_show_sum, grp_CAGR40 %in% c(1, 3, 5)) %>% 
+# 	mutate(grp_CAGR40 = factor(grp_CAGR40, levels = c(5, 3,1), 
+# 														 labels = c("High Return \n(above 80th percentile)", 
+# 														 					   "Medium Return \n(40th~60th percentile)", 
+# 														 					   "Low Return \n(below 20th percentile)")),
+# 				 runname = factor(runname, levels = runnames_show_sum)
+# 				 ) %>% 
+# 	ggplot(aes(x = B_PVtot_net_dr_diffpct, y = -ERC_PV_diff_pct, color = runname)) + 
+# 	facet_grid(.~grp_CAGR40) + 
+# 	geom_point(size = 4) + 
+# 	geom_vline(xintercept = 0, linetype = 2, size = 0.5) + 
+# 	geom_hline(yintercept = 0, linetype = 2, size = 0.5) + 
+# 	scale_color_manual(values = c("grey50", brewer_pal(type = "qual", palette = "Paired")(6))) +
+#   coord_cartesian(xlim = c(-13, 26), ylim = c(-2, 10)) + 
+# 	scale_x_continuous(breaks = seq(-100, 100, 5)) + 
+# 	scale_y_continuous(breaks = seq(-100, 100, 2)) + 
+# 	labs(
+# 		color = "Policy",
+# 		x = "Changes in PV benefit net of PV member contribution (%) \n compared with baseline",
+# 		y = "Reduction in PV employer contribution (%) \n compared with baseline"
+# 	)
+
+
+
+runnames_show_sum <- c("baseline_FR100", "cola_return_FR100", "cola_FR_FR100", "EEC_return_FR100", "EEC_FR_FR100")  
+df_sum_comparePV_net %>% 
+	ungroup %>% 
+	filter(runname %in% runnames_show_sum, grp_CAGR40 %in% c(1, 3, 5)) %>% 
+	mutate(grp_CAGR40 = factor(grp_CAGR40, levels = c(5, 3,1), 
+														 labels = c("High Return \n(above 80th percentile)", 
+														 					   "Medium Return \n(40th~60th percentile)", 
+														 					   "Low Return \n(below 20th percentile)")),
+				 runname = factor(runname, levels = runnames_show_sum)
+				 ) %>% 
+	ggplot(aes(x = B_PVtot_net_dr_diffpct, y = -ERC_PV_diff_pct, color = runname, shape = grp_CAGR40)) + 
+	geom_point(size = 4, stroke = 1.3) + 
+	geom_vline(xintercept = 0, linetype = 2, size = 0.5) + 
+	geom_hline(yintercept = 0, linetype = 2, size = 0.5) + 
+	#coord_cartesian(xlim = c(-15, 16), ylim = c(-2, 10)) + 
+	scale_color_manual(values = c("grey50", brewer_pal(type = "qual", palette = "Paired")(6))) +
+	scale_shape_manual(values = c(17, 19, 25)) +
+	scale_x_continuous(breaks = seq(-100, 100, 5)) + 
+	scale_y_continuous(breaks = seq(-100, 100, 2)) + 
+	labs(
+		color = "Policy",
+		shape = "Long-term return group",
+		x = "Changes in PV benefit net of PV member contribution (%) \n compared with baseline",
+		y = "Reduction in PV employer contribution (%) \n compared with baseline"
+	)
+
+
+
+
+
+## Max 5-year ERC rate change vs Max 5-year benefit change 
+
+df_sum_ERCMaxChg <- 
+  df_ERCMaxChg %>% 
+	select(runname, sim, ERC_PR_chg5yMax) %>% 
+	mutate(ERC_PR_chg5yMax = 100 * ERC_PR_chg5yMax) %>% 
+	left_join(df_CAGR40, by = "sim") %>% 
+	group_by(runname, grp_CAGR40) %>% 
+	summarise(ERC_PR_chg5yMax_med = median(ERC_PR_chg5yMax)) %>% 
+  arrange(runname, desc(grp_CAGR40))
+
+
+df_sum_BMaxChg <- 
+df_benefit_y1 %>% 
+  summarise(B_real_chg5yMin = min(B_real_chg5y, na.rm = TRUE),
+						B_real_age80   = B_real[age == 80]) %>% 
+	left_join(df_CAGR40, by = "sim") %>% 
+	group_by(runname, grp_CAGR40) %>% 
+	summarise(B_real_chg5yMin_med = median(B_real_chg5yMin)) %>% 
+	arrange(runname, desc(grp_CAGR40))
+
+
+df_sum_maxChg <- 
+	left_join(df_sum_ERCMaxChg, df_sum_BMaxChg) %>% 
+	group_by(grp_CAGR40) %>% 
+	mutate(ERC_maxChg_diff = ERC_PR_chg5yMax_med - ERC_PR_chg5yMax_med[runname == "baseline"],
+				 B_maxChg_diff   = B_real_chg5yMin_med - B_real_chg5yMin_med[runname == "baseline"]
+				 ) 
+df_sum_maxChg 
+
+
+runnames_show_sum <- c("baseline", "cola_return", "cola_FR", "EEC_return", "EEC_FR")  
+df_sum_maxChg %>% 
+	ungroup %>% 
+	filter(runname %in% runnames_show_sum, grp_CAGR40 %in% c(1, 3)) %>% 
+	mutate(grp_CAGR40 = factor(grp_CAGR40, levels = c(3,1), 
+														 labels = c("Medium Return \n(40th~60th percentile)", "Low Return \n(below 20th percentile)")),
+				 runname = factor(runname, levels = runnames_show_sum)
+				 ) %>% 
+	ggplot(aes(x = B_maxChg_diff, y = -ERC_maxChg_diff, color = runname)) + 
+	facet_grid(.~grp_CAGR40) + 
+	geom_point(size = 4) + 
+	#geom_vline(xintercept = 0, linetype = 2, size = 0.5) + 
+	#geom_hline(yintercept = 0, linetype = 2, size = 0.5) + 
+	scale_color_manual(values = c("grey50", brewer_pal(type = "qual", palette = "Paired")(6))) 
+  #coord_cartesian(xlim = c(-13, 20), ylim = c(-2, 10)) + 
+	#scale_x_continuous(breaks = seq(-100, 100, 5)) + 
+	#scale_y_continuous(breaks = seq(-100, 100, 2)) + 
+	# labs(
+	# 	color = "Policy",
+	# 	x = "Changes in PV benefit net of PV member contribution (%) \n compared with baseline",
+	# 	y = "Reduction in PV employer contribution (%) \n compared with baseline"
+	# )
+
+
+
+
+
+
+```
+
+
+
+
+
+
 
 
 
@@ -1583,7 +1970,6 @@ df_cola_qtiles_FR100 <-
 																 labels = levels(df_cola_qtiles_FR75$runname_wlabel)[df_cola_qtiles_FR75$runname])) 
 df_cola_qtiles_FR100
 ```
-
 
 ```{r eval=FALSE, include=FALSE}
 fig_title    <- "Distributions of 40-year compound annual COLA \nunder different COLA policies"

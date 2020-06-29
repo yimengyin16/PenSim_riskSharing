@@ -19,12 +19,14 @@ library(doParallel)
 library(microbenchmark)
 
 # Tydiverse and other RStudio packages
+library(gt)
 library(readxl)
 library(stringr)
 library(purrr)
 library(rlang)
 library(tidyverse) # loads ggplot2, tibble, tidyr, readr, purrr, dplyr, forcats
 library(knitr)
+
 
 options(dplyr.print_min = 100) # default is 10
 options(dplyr.print_max = 100) # default is 20

@@ -4,7 +4,7 @@
 
 # Labels for run names 
 run_labels_FR75 <- c(
-	baseline = "Baseline",
+	baseline           = "Baseline",
 	cola_return        = "Contingent COLA: \nreturn",
 	cola_FR            = "Contingent COLA: \nFunded ratio threshold",
 	cola_FRramp        = "Contingent COLA: \nFunded ratio ramp",
@@ -39,6 +39,11 @@ run_levels_FR100
 run_labels_all <- c(run_labels_FR75, run_labels_FR100)
 run_levels_all <- c(run_levels_FR75, run_levels_FR100)
 
+
+df_run <- tibble(
+	runname       = run_levels_all,
+	runname_label = run_labels_all
+)
 
 
 
