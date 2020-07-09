@@ -12,8 +12,8 @@ source("libraries.R")
 
 
 ## Setting folder paths
-# dir_Outputs <- "Outputs_500sims/"
- dir_Outputs <- "Outputs/"
+dir_Outputs <- "Outputs_500sims/"
+#dir_Outputs <- "Outputs/"
 
 #******************************************************************************* 
 #                          ## Notes on contingent COLA
@@ -80,7 +80,7 @@ Global_paramlist <- read_excel(path_RunControl, sheet="Global_paramlist") %>% fi
 for(runName in runList$runname ){
    
    suppressMessages(gc())
-	# runName <- runList$runname
+	#runName <- runList$runname
 
 	cat(runName, "\n")
 	paramlist <- get_parmsList(runList, runName)

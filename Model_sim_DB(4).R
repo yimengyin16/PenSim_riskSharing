@@ -3,8 +3,8 @@
 run_sim_regular <- function(paramlist_ = paramlist,
 														Global_paramlist_ = Global_paramlist){
 
-#paramlist_ <- paramlist
-#Global_paramlist_ <- Global_paramlist
+# paramlist_ <- paramlist
+# Global_paramlist_ <- Global_paramlist
 
 assign_parmsList(Global_paramlist_, envir = environment())
 assign_parmsList(paramlist_,  envir = environment())
@@ -281,7 +281,7 @@ p_coeff_retirees <-
 	map( ~ lm(PVB1 ~ cola + I(cola^2) + I(cola^3), data = .)) %>% 
 	map(coefficients) %>% 
 	bind_rows() %>% 
-	t %>% 
+	# t %>% 
   as_tibble() %>% 
 	mutate(age = age_ret:age_max) %>% 
 	rename(b0 = 1, b1=2, b2=3, b3 =4)
@@ -329,7 +329,7 @@ df_AL.act_colaGrid %>%
 grp_names <- names(p_coeff_actives)
 p_coeff_actives %<>% 
 	bind_rows() %>% 
-	t %>% 
+	# t %>% 
 	as_tibble %>% 
 	mutate(ea_age = grp_names) %>% 
 	separate(ea_age, c("ea", "age"), sep = "_", convert = TRUE) %>% 
