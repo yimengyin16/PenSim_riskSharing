@@ -6,10 +6,12 @@
 run_labels_FR75 <- c(
 	baseline           = "Baseline",
 	cola_return        = "Contingent COLA: \nreturn",
+	cola_returnSmooth = "Contingent COLA: \nreturn smoothed",
 	cola_FR            = "Contingent COLA: \nFunded ratio threshold",
 	cola_FRramp        = "Contingent COLA: \nFunded ratio ramp",
 	cola_SDRS          = "SDRS fast repayment",
 	EEC_return         = "Contingent EEC: \nReturn",
+	EEC_returnSmooth   = "Contingent EEC: \nReturn smoothed",
 	EEC_FR             = "Contingent EEC: \nFunded ratio",
 	EEC_sharedADCfloor = "Contingent EEC: \nShared ADC",
 	hybrid_DB          = "hybrid_DB"
