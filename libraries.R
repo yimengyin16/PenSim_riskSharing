@@ -10,6 +10,7 @@ library("XLConnect") # slow but convenient because it reads ranges; NOTE: I had 
 library(magrittr)    # use %<>%   
 library(scales)
 library(Rcpp)
+library(flextable)
 # library(xlsx)
 # library("btools")
 
