@@ -6,8 +6,10 @@
 run_labels_FR75 <- c(
 	baseline           = "Baseline",
 	cola_return        = "Contingent COLA: \nreturn",
-	cola_returnSmooth = "Contingent COLA: \nreturn smoothed",
+	cola_returnSmooth  = "Contingent COLA: \nreturn smoothed",
+	cola_returnSmooth_calib = "Contingent COLA: \nreturn smoothed\ncalib",
 	cola_FR            = "Contingent COLA: \nFunded ratio threshold",
+	cola_FR_calib      = "Contingent COLA: \nFunded ratio threshold\ncalib",
 	cola_FRramp        = "Contingent COLA: \nFunded ratio ramp",
 	cola_SDRS          = "SDRS fast repayment",
 	EEC_return         = "Contingent EEC: \nReturn",
@@ -25,7 +27,11 @@ run_levels_FR75
 run_labels_FR100 <- c(
 	baseline_FR100      = "Baseline \nYear-1 funded ratio 100%",
 	cola_return_FR100   = "Contingent COLA: \nreturn\nYear-1 funded ratio 100%",
+	
+	cola_returnSmooth_calib_FR100 = "Contingent COLA: \nreturn smoothed\ncalib FR 100%",
+	
 	cola_FR_FR100       = "Contingent COLA: \nFunded ratio threshold\nYear-1 funded ratio 100%",
+	cola_FR_calib_FR100 = "Contingent COLA: \nFunded ratio threshold\nYear-1 funded ratio 100%\ncalib",
 	cola_FRramp_FR100   = "Contingent COLA: \nFunded ratio ramp\nYear-1 funded ratio 100%",
 	cola_SDRS_FR100     = "SDRS fast repayment\nYear-1 funded ratio 100%",
 	EEC_return_FR100    = "Contingent EEC: \nReturn\nYear-1 funded ratio 100%",
