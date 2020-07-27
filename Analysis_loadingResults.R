@@ -16,7 +16,8 @@ run_labels_FR75 <- c(
 	EEC_returnSmooth   = "Contingent EEC: \nReturn smoothed",
 	EEC_FR             = "Contingent EEC: \nFunded ratio",
 	EEC_sharedADCfloor = "Contingent EEC: \nShared ADC",
-	hybrid_DB          = "hybrid_DB"
+	hybrid_DB          = "hybrid_DB",
+	mixed_WRS          = "WRS-like"
 	# EEC_sharedNC  = "Contingent EEC: \nshared",
 )
 
@@ -37,7 +38,8 @@ run_labels_FR100 <- c(
 	EEC_return_FR100    = "Contingent EEC: \nReturn\nYear-1 funded ratio 100%",
 	EEC_FR_FR100        = "Contingent EEC: \nFunded ratio\nYear-1 funded ratio 100%",
 	EEC_sharedADCfloor_FR100 = "Contingent EEC: \nShared ADC\nYear-1 funded ratio 100%",
-	hybrid_DB_FR100     = "hybrid_DB\nYear-1 funded ratio 100%"
+	hybrid_DB_FR100     = "hybrid_DB\nYear-1 funded ratio 100%",
+	mixed_WRS_FR100     = "WRS-like funded ratio 100%"
 	# EEC_sharedNC  = "Contingent EEC: \nshared",
 )
 
@@ -64,13 +66,13 @@ results_all <- get_results(dir_modelResults) %>%
 				 #ERC_PR = ERC / salary,
 				 #ERC2   = NC.ER + SC, # For SDRS policy analysis only
 				 #ERC2_PR = ERC2 / salary
-				 PR = EEC/EEC_PR
+				 PR = EEC/EEC_PR,
+				 SC_legacy = na2zero(SC_legacy)
 	) 
 
-results_all %>% head
-results_all$runname %>% unique
-
-
+#results_all %>% head
+# results_all$runname %>% unique
+#results_all %>% select(runname, sim, year, ERC, SC_legacy)
 
 
 
@@ -86,12 +88,15 @@ results_all %<>%
 				 ERC_DB = ERC,
 				 C_DB   = EEC_DB + ERC_DB, 
 				 
-				 EEC_DC = ifelse(runname == "hybrid_DB", salary * DC_EECrate, 0),
-				 ERC_DC = ifelse(runname == "hybrid_DB", salary * DC_ERCrate, 0),
+				 EEC_DC = ifelse(str_detect(runname, "hybrid_DB"), salary * DC_EECrate, 0),
+				 ERC_DC = ifelse(str_detect(runname, "hybrid_DB"), salary * DC_ERCrate, 0),
 				 C_DC   = EEC_DC + ERC_DC, 
 				 
 				 EEC = EEC_DB + EEC_DC,
 				 ERC = ERC_DB + ERC_DC,
+				 
+				 # adding legacy SC, currently only applied to hybrid plans
+				 ERC = ERC + SC_legacy,
 				 
 				 C = EEC + ERC,
 				 

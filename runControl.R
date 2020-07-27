@@ -12,8 +12,8 @@ source("libraries.R")
 
 
 ## Setting folder paths
-dir_Outputs <- "Outputs_500sims/"
-#dir_Outputs <- "Outputs/"
+#dir_Outputs <- "Outputs_500sims/"
+dir_Outputs <- "Outputs/"
 
 #******************************************************************************* 
 #                          ## Notes on contingent COLA
@@ -90,7 +90,7 @@ for(runName in runList$runname ){
 	# Global_paramlist$range_ea  <- with(Global_paramlist, min_ea:max_ea)
 
 	
-	source("Model_sim_DB(5).R")
+	source("Model_sim_DB(7).R")
 	outputs_list <- list(paramlist        = paramlist,
 											 Global_paramlist = Global_paramlist,
 											 results          = penSim_DB_results)
