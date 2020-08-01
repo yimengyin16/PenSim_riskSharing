@@ -18,8 +18,8 @@ source(here::here("libraries.R"))
 
 theme_set(theme_yy())
 
-# dir_modelResults <- paste0(here::here(),"/Outputs/")
-dir_modelResults <- paste0(here::here(),"/Outputs_500sims/")
+dir_modelResults <- paste0(here::here(),"/Outputs/")
+#dir_modelResults <- paste0(here::here(),"/Outputs_500sims/")
 dir_outputs      <- paste0(here::here(),"/Outputs_Analysis/") 
 
 
@@ -164,6 +164,7 @@ df_cola_qtiles %>%
 
 df_cola_qtiles %>% 
 	filter(runname %in% runnames_show_calib) %>% 
+	filter(!str_detect(runname, "EEC")) %>% 
 	mutate(runname = factor(runname, levels = runnames_show_calib,
 													         labels = runnames_show_calib_labels)) %>% 
 	ggplot(aes(x = runname)) + 
@@ -1370,7 +1371,7 @@ tab_B_vol2_calib
 
 # Deterministic asset shock scenario
 
-```{r echo = FALSE}
+```{r eval=FALSE}
 
 ## Deterministic asset shock scenarios:
 
