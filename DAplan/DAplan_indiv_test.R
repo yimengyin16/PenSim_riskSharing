@@ -74,15 +74,23 @@ df_indiv %<>%
 
 df_indiv %<>% 
 	mutate(
+		
+		sx = na2zero(sx),
+		
 		# Prob of survival in each year
 		pxT = ifelse(age < 60, 
 								 1 - qxm - qxt - qxd,
 								 1 - qxm),
+		
+		# Number of remaining members assuming 100 initial members
+		N = ifelse(year == 1, 100, 100 * lag(cumprod(pxT))),
+		
+		
 		# Prob of survival up to retirement (age 60)
 		p_age2ret = order_by(-age, cumprod(ifelse(age >= 60, 1, pxT))),
 		
 		# Prob for retirees to survive up a certain age
-		p_ret2age = cumprod(ifelse(age <= 60, 1, pxT)),
+		p_ret2age = cumprod(ifelse(age <= 60, 1, lag(pxT))), # note that pxT needs to be lagged
 		
 		
 		# discount factor up to retirement (age 60)
@@ -127,39 +135,61 @@ df_indiv
 
 ## Create a series of hypothetical benefit indices:
 ben_idx_vec <- rep(infl, nrow(df_indiv))
-ben_idx_vec[c(6:10, 21:25, 36:40)] <- 0
+# ben_idx_vec[c(6:10, 21:25, 36:40)] <- 0
 
 df_indiv %<>% 
 	mutate(ben_idx = ben_idx_vec,
 				 Bx = 0,
 				 Bx_new = 0,
-				 B  = 0)
+				 B  = 0,
+				 AL_fullIdx_tot = 0,
+				 AL_noIdx_tot = 0,
+				 NC_tot = 0,
+				 B_tot  = 0,
+				 MA = 0)
 
 
 df_indiv1 <- df_indiv
 
-for(j in 2:31){
+for(j in 1:31){
 	
 	df_indiv1 %<>% 
-		# Updating accured benefits for active members  
+	
 		mutate(
-		Bx = ifelse(year == j, ( (Bx  + sx * bfactor) * (1 + ben_idx))[year == j-1], Bx),
+		## Updating accured benefits for active members 
+		#   all values are for a single member
+			
+			
+		Bx = ifelse(year == j & j != 1, ( (Bx  + sx * bfactor) * (1 + ben_idx))[year == j-1], Bx),
 	  
-		Bx_new = ifelse(year == j, ((sx * bfactor) * (1 + ben_idx))[year == j-1], Bx_new),
+		Bx_new = ifelse(year == j, ((sx * bfactor) * (1 + ben_idx)), Bx_new),
 		
 	  # Real liability: assuming full index
-	  ALx_fullIdx = Bx * B1_age2ret_fullIdx * ax1_age2death_fullIdx[age == 60],
+	  ALx_fullIdx = Bx * B1_age2ret_fullIdx * ax1_age2death_fullIdx[age == 60]  * p_age2ret / (1+dr)^(60-age),
 	  
 	  # Nominal liability assuming full index
-	  ALx_noIdx   = Bx * ax1_age2death_noIdx[age == 60]
+	  ALx_noIdx = Bx * ax1_age2death_noIdx[age == 60] * p_age2ret / (1+dr)^(60-age),
 		
 		# Normal costs
+		NCx_fullIdx = (Bx_new * lead(B1_age2ret_fullIdx) * ax1_age2death_fullIdx[age == 60]) * p_age2ret / (1+dr)^(60-age),
 		
+		## Aggregate values
+		AL_fullIdx_tot = N *  ALx_fullIdx,
+		AL_noIdx_tot = N *  ALx_noIdx,
+		NC_tot = 	N * NCx_fullIdx,
+		B_tot  =  N * B
 		)
+	
+	if(j != 1) df_indiv1$MA[j] <- with(df_indiv1, (MA[j-1] + NC_tot[j-1] - B_tot[j-1]) * (1 + dr) )
+	
 }
 
+
+
 df_indiv1 %<>% 
-	mutate(B = ifelse(age ==  60, Bx, 0))
+	mutate(B     = ifelse(age ==  60, Bx, 0)
+				 #B_tot = ifelse(age ==  60, N * B, B_tot)
+				 )
 df_indiv1
 
 for(j in 32:71){
@@ -172,27 +202,30 @@ for(j in 32:71){
 					 ALx_fullIdx = ifelse(year < j, ALx_fullIdx, B * ax1_age2death_fullIdx),
 					 
 					 # Nominal liability assuming full index
-					 ALx_noIdx   = ifelse(year < j, ALx_noIdx,   B * ax1_age2death_noIdx)
+					 ALx_noIdx   = ifelse(year < j, ALx_noIdx,   B * ax1_age2death_noIdx),
+					 
+					 ## Aggregate values
+					 AL_fullIdx_tot = N *  ALx_fullIdx,
+					 AL_noIdx_tot = N *  ALx_noIdx,
+					 NC_tot = 	N * NCx_fullIdx,
+					 B_tot  =  N * B
 		)
+	
+   df_indiv1$MA[j] <- with(df_indiv1, (MA[j-1] + NC_tot[j-1] - B_tot[j-1]) * (1 + dr) )
+	
 }
 
 
 
 
 df_indiv1 %>% 
-	select(-qxm, -qxt, -qxd, -qxr, -qxt, -pxT)
+	select(-qxm, -qxt, -qxd, -qxr, -qxt, -starts_with("p_"), -starts_with("fct") )
 
 
-
-
-
-
-
-
-
-
-
-
-
+df_indiv1 %>% 
+	filter(age>=30) %>% 
+	mutate(FR_real = MA / AL_fullIdx_tot,
+				 FR_nom  = MA / AL_noIdx_tot) %>% 
+	select(year, age, FR_real, FR_nom,  AL_noIdx_tot, AL_fullIdx_tot, MA, NC_tot, B_tot, N) # NCx_fullIdx, B) #ALx_fullIdx, B1_age2death_fullIdx ,fct_dr_ret2age, p_ret2age, ax1_age2death_fullIdx,pxT)
 
 

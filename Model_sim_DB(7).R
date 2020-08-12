@@ -99,7 +99,8 @@ df_terms %<>%
 
 ## Active members
 df_actives %<>% 
-	filter(year <= nyear) %>% 
+	filter(year <= nyear,
+				 age  <  age_ret) %>% 
 	rename(n_act  = number.a,
 				 salary = sx,
 				 
