@@ -197,6 +197,7 @@ df_servRet_sim0
 start_years <- c(df_servRet_sim0$start_year[df_servRet_sim0$year == 1], 1:nyear)
 df_servRet_sim0 %<>%  filter( !(ret_year == 1 & (!start_year %in% start_years))) 
 
+
 # select cohorts to model
 df_servRet_sim0 %<>% 
 	filter(start_year %in%  1 & ea %in% c(30,31)|
@@ -225,22 +226,27 @@ df_indiv_sim0 <-
 
 
 
-# TEMP: accured benefits for initial members in year 1
-#       Use the current salary as the indexed salarly 
+# TEMP: 
+#   - accured benefits for initial members in year 1
+#   - Use the current salary as the indexed salarly 
+#   - assume full index in year 0   
+
 # TODO: initial accrued benefit consistent with salary history before year 1 
+#       A
+
 
 df_indiv_sim0 %<>% 
 	mutate(
 		     # accrued benefit for initial active members
-		     Bx        = ifelse(start_year <= 1 & year == 1 & age < age_ret, yos * bfactor_DA * sx, 0),
-  			 Bx_new    = 0,
+		     Bx          = ifelse(start_year <= 1 & year == 1 & age < age_ret, yos * bfactor_DA * sx, 0),
+  			 Bx_new      = ifelse(start_year <= 1 & year == 1 & age < age_ret, bfactor_DA * sx * (1 + idxFull_act_DA), 0),
 				 # benefit for initial retirees: deleting all benefit values for non-initial members
-				 B = ifelse(ret_year > 1 | year > 1, 0, B),
+				 B           = ifelse(ret_year > 1 | year > 1, 0, B),
 				 
 				 ALx_fullIdx = ifelse(age< age_ret, Bx * fct_ALx_fullIdx, B * ax1_age2death_fullIdx),
 	  		 ALx_noIdx   = ifelse(age< age_ret, Bx * fct_ALx_noIdx,   B * ax1_age2death_noIdx),
 				 
-				 NCx_fullIdx = 0,
+				 NCx_fullIdx = Bx_new * fct_NCx_fullIdx,
 				 
 				 n_actives = na2zero(n_actives),
 				 n_servRet = na2zero(n_servRet)
@@ -250,7 +256,7 @@ df_indiv_sim0 %<>%
 
 
 df_indiv_sim0 %>% 
-	filter(start_year == -10)
+	filter(start_year == 1)
 df_indiv_sim0 
 
 
@@ -275,6 +281,26 @@ df_indiv_sim0
 
 
 #*******************************************************************************
+#                           ### index and return ####                      
+#*******************************************************************************
+
+
+## Create a series of hypothetical benefit indices:
+ben_idx_vec <- rep(0.02, nyear)
+ben_idx_vec[c(6:10, 21:25, 36:40)] <- 0
+# ben_idx_vec
+
+## Create investment returns
+i.r <- rep(0.075, nyear)
+i.r[6:7] <- 0.0
+
+#set.seed(1234);i.r <- rnorm(nyear, 0.075, 0.12)
+i.r
+
+
+
+
+#*******************************************************************************
 #                           ### valuation  ####                      
 #*******************************************************************************
 
@@ -286,20 +312,7 @@ df_indiv_sim0
 # Normal cost
 # index for current year. 
 
-
-
 nyear <- max(df_indiv_sim0$year)
-
-## Create a series of hypothetical benefit indices:
-ben_idx_vec <- data.frame(year = unique(df_actives$year),
-													ben_idx = 0.02)
-ben_idx_vec$ben_idx[c(6:10, 21:25, 36:40)] <- 0
-
-
-df_indiv_sim0 %<>% 
-	mutate(ben_idx = 0.02)
-
-
 
 
 ## Create a data frame for aggregate valuation results
@@ -308,38 +321,108 @@ df_agg_sim0 <-
 	mutate(AL_fullIdx = 0,
 				 AL_noIdx   = 0,
 				 MA         = 0,
+				 UAAL_fullIdx = 0,
 				 FR_fullIdx = 0,
 				 FR_noIdx   = 0,
 				 NC         = 0,
 				 SC         = 0,
 				 C          = 0,
-				 B          = 0
+				 B          = 0,
+				 I.e        = 0,
+				 I.r        = 0,
+				 I.diff      = 0
 				 )
 	
-#df_agg_sim0$AL_fullIdx[1] <- filter(df_indiv_sim0, year == 1)$ALx_fullIdx %>% sum
-#df_agg_sim0$AL_noIdx[1]   <- filter(df_indiv_sim0, year == 1)$ALx_noIdx   %>% sum
+## Aggregate values in year 1
+df_agg_temp_year1 <- filter(df_indiv_sim0, year == 1) %>% 
+	summarise(AL_fullIdx = sum((n_actives + n_servRet) * ALx_fullIdx, na.rm = TRUE),
+						AL_noIdx = sum((n_actives + n_servRet) * ALx_noIdx, na.rm = TRUE),
+						B  = sum(n_servRet * B, na.rm = TRUE),
+						NC = sum(n_actives * NCx_fullIdx, na.rm = TRUE)
+	) 
 
 
+
+
+# cash flows
+df_agg_sim0$AL_fullIdx[1] <- df_agg_temp_year1$AL_fullIdx
+df_agg_sim0$AL_noIdx[1]   <- df_agg_temp_year1$AL_noIdx
+df_agg_sim0$NC[1]         <- df_agg_temp_year1$NC
+df_agg_sim0$B[1]          <- df_agg_temp_year1$B
+
+
+
+df_agg_sim0$MA[1]           <- df_agg_sim0$AL_fullIdx[1]
+df_agg_sim0$UAAL_fullIdx[1] <- df_agg_sim0$AL_fullIdx[1] - df_agg_sim0$MA[1]
+
+df_agg_sim0$C[1]         <- df_agg_sim0$NC[1] 
+
+
+
+
+
+
+# df_agg_sim$I.e[1] <- with(df_agg_sim, dr_DA *(MA[j] + C[j] - B[j]))
+# df_agg_sim$I.r[1] <- with(df_agg_sim, i.r * (MA[j] + C[j] - B[j])) # C[j] should be multiplied by i.r if assuming contribution is made at year end. 
+# df_agg_sim$I.diff[1] <- with(df_agg_sim, I.r[j] - I.e[j])
+
+# funded ratios
+df_agg_sim0$FR_fullIdx[1] <- with(df_agg_sim0, MA[1] / AL_fullIdx[1])
+df_agg_sim0$FR_noIdx[1]   <- with(df_agg_sim0, MA[1] / AL_noIdx[1])
+
+# index 
+ben_idx_vec[1] <- with(df_agg_sim0, min(1, max(0, (MA[1] - AL_noIdx[1])/(AL_fullIdx[1] - AL_noIdx[1])))) * idxFull_act_DA
+
+
+## total payroll
+df_agg_sim0 %<>% 
+	left_join(df_indiv_sim0 %>% 
+							group_by(year) %>% 
+							summarise(sx = sum(n_actives * sx, na.rm = TRUE)),
+						by = "year"
+	)
+
+
+
+
+
+#*******************************************************************************
+#                           ### Simulation ####                      
+#*******************************************************************************
+
+
+# Initialization 
 df_indiv_sim <- df_indiv_sim0
-df_agg_sim   <- df_agg_sim0 %>% unclass()
+df_agg_sim   <- unclass(df_agg_sim0)
 
 
-for(j in 1:nyear){
+for(j in 2:nyear){
 
-	
+	# j=2
 	# df_indiv_sim0 %>%
 	# 	filter(start_year == -1, ea == 20)
 	# 
 	# df_indiv_sim %>%
 	# 	filter(start_year == -10)
+	# j = 1
 	
- 
+  # 1. Determining MA based on the cash flows in previous year
+	
+	# calculating investment income based on the updated balance of MA
+	df_agg_sim$I.e[j-1]    <- with(df_agg_sim, dr_DA * (MA[j-1] + C[j-1] - B[j-1]))
+	df_agg_sim$I.r[j-1]    <- with(df_agg_sim, i.r[j-1] * (MA[j-1] + C[j-1] - B[j-1])) # C[j] should be multiplied by i.r if assuming contribution is made at year end. 
+	df_agg_sim$I.diff[j-1] <- with(df_agg_sim, I.r[j-1] - I.e[j-1])
+	
+	
+	df_agg_sim$MA[j] <- with(df_agg_sim, (MA[j-1] + C[j-1] - B[j-1]) + I.r[j-1]   )
+  
+  # 2. Calculating nominal and real liabilities 	
 	df_indiv_sim %<>% 
 		mutate(
 			     ## Updating accured benefits for active members 
 			     #  all values are for a single member
-			     Bx     = ifelse(year == j & j != 1, lag((Bx  + sx * bfactor_DA) * (1 + ben_idx)) , Bx),
-					 Bx_new = ifelse(year == j, ((sx * bfactor_DA) * (1 + ben_idx)), Bx_new),
+			     Bx     = ifelse(year == j, lag((Bx + sx * bfactor_DA) * (1 + ben_idx_vec[j-1])) , Bx),
+					 # Bx_new = ifelse(year == j, ((sx * bfactor_DA) * (1 + ben_idx_vec[j])), Bx_new),
 					 
 					 
 					 # Determine the starting benefit level upon retirement
@@ -347,7 +430,7 @@ for(j in 1:nyear){
 					 B = ifelse(year == j & ret_year == j & ret_year > 1, Bx, B),
 					 
 					 # Update benefit with index
-					 B = ifelse(year == j & year > ret_year, lag(B * (1 + ben_idx)), B),
+					 B = ifelse(year == j & year > ret_year, lag(B * (1 + ben_idx_vec[j-1])), B),
 					 
 					 # Real liability: assuming full index
 					 ALx_fullIdx = ifelse(age < age_ret, Bx * fct_ALx_fullIdx, B * ax1_age2death_fullIdx),
@@ -356,46 +439,83 @@ for(j in 1:nyear){
 					 ALx_noIdx   = ifelse(age < age_ret, Bx * fct_ALx_noIdx,   B * ax1_age2death_noIdx),
 					 
 					 # Normal costs
-					 NCx_fullIdx = Bx_new * fct_NCx_fullIdx
+					 # NCx_fullIdx = Bx_new * fct_NCx_fullIdx
 					 )
 	
-	df_agg_temp <- filter(df_indiv_sim, year == j) %>% 
+	df_agg_temp1 <- filter(df_indiv_sim, year == j) %>% 
 	               	summarise(AL_fullIdx = sum((n_actives + n_servRet) * ALx_fullIdx, na.rm = TRUE),
-	               						AL_noIdx = sum((n_actives + n_servRet) * ALx_noIdx, na.rm = TRUE),
-	               						B  = sum(n_servRet * B, na.rm = TRUE),
-	               						NC = sum(n_actives * NCx_fullIdx, na.rm = TRUE)
+	               						AL_noIdx = sum((n_actives + n_servRet) * ALx_noIdx, na.rm = TRUE)
+	               						# B  = sum(n_servRet * B, na.rm = TRUE),
+	               						# NC = sum(n_actives * NCx_fullIdx, na.rm = TRUE)
 	               						) 
 		 
+	df_agg_sim$AL_fullIdx[j] <- df_agg_temp1$AL_fullIdx
+	df_agg_sim$AL_noIdx[j]   <- df_agg_temp1$AL_noIdx
 	
-	df_agg_sim$AL_fullIdx[j] <- df_agg_temp$AL_fullIdx
-	df_agg_sim$AL_noIdx[j]   <- df_agg_temp$AL_noIdx
-	df_agg_sim$B[j]          <- df_agg_temp$B
-	df_agg_sim$NC[j]         <- df_agg_temp$NC
-  
+	df_agg_sim$UAAL_fullIdx[j] <- df_agg_sim$AL_fullIdx[j] - df_agg_sim$MA[j]
 	
 	
-	
-	if(j == 1) {
-		df_agg_sim$MA[j] <- df_agg_sim$AL_fullIdx[j]
-		} else {
-		df_agg_sim$MA[j] <- 	with(df_agg_sim, (MA[j-1] + NC[j-1] - B[j-1]) * (1 + dr_DA))
-	}
-	
+
+	# 3. Calculating nominal and real funded ratio
 	df_agg_sim$FR_fullIdx[j] <- with(df_agg_sim, MA[j] / AL_fullIdx[j])
 	df_agg_sim$FR_noIdx[j]   <- with(df_agg_sim, MA[j] / AL_noIdx[j])
 	
+	
+	
+	# 4. Determining benefit index in year j 
+  ben_idx_vec[j] <- with(df_agg_sim, min(1, max(0, (MA[j] - AL_noIdx[j])/(AL_fullIdx[j] - AL_noIdx[j])))) * idxFull_act_DA
+	
+  
+	# 5 and 6. determining benefit accrual and normal cost based on salary and indexation determined in the previous step
+	df_indiv_sim %<>% 
+		mutate(
+			## Updating accured benefits for active members 
+			#  all values are for a single member
+			Bx_new = ifelse(year == j, ((sx * bfactor_DA) * (1 + ben_idx_vec[j])), Bx_new),
+			
+			# Normal costs
+			NCx_fullIdx = Bx_new * fct_NCx_fullIdx
+		)
+	
+	
+	## aggregate benefit and normal cost
+	df_agg_temp2 <- filter(df_indiv_sim, year == j) %>% 
+		summarise(# AL_fullIdx = sum((n_actives + n_servRet) * ALx_fullIdx, na.rm = TRUE),
+							# AL_noIdx = sum((n_actives + n_servRet) * ALx_noIdx, na.rm = TRUE)
+							B  = sum(n_servRet * B, na.rm = TRUE),
+							NC = sum(n_actives * NCx_fullIdx, na.rm = TRUE)
+		)
+	df_agg_sim$B[j]          <- df_agg_temp2$B
+	df_agg_sim$NC[j]         <- df_agg_temp2$NC
+  
+	
+	# Amortization cost
+	df_agg_sim$SC[j] <- amort_LG(df_agg_sim$UAAL_fullIdx[j], dr_DA, m, salgrowth_amort, end = FALSE, method = amort_method)[1]
+	
+	# Total contribution
+	df_agg_sim$C[j]         <- 	df_agg_sim$NC[j] + df_agg_sim$SC[j]  
+
 }
 
 
 
 
+
+
+df_agg_sim %<>% 
+	as_tibble %>% 
+	mutate(ben_idx = ben_idx_vec,
+				 C_PR    = 100 * C / sx) 
+df_agg_sim 
+
+
 df_indiv_sim %>% filter(start_year == -1, ea == 20)
-
-df_indiv_sim %>% filter(start_year == 1, ea == 31)
-
+df_indiv_sim %>% filter(start_year == 1,  ea == 31)
 df_indiv_sim %>% filter(start_year == -10)
 
-df_agg_sim %>% as.data.frame()
+
+
+
 
 
 

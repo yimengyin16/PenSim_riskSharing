@@ -1240,7 +1240,7 @@ for (j in 1:nyear){
 	penSim$I.r[j] <- with(penSim, i.r[j] *( MA[j] + C[j] - B[j])) # C[j] should be multiplied by i.r if assuming contribution is made at year end. 
 	
 	# I.dif(j) = I.r(j) - I.e(j)
-	penSim$I.dif[j] <- with(penSim, I.r[j] - I.e[j])
+	penSim$I.diff[j] <- with(penSim, I.r[j] - I.e[j])
 	
 	
 	# #**************************************************
