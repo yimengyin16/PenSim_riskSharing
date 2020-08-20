@@ -17,35 +17,32 @@
 #                           ### Initialization ####                      
 #*******************************************************************************
 
+
+run_sim_DA <- function(paramlist_ = paramlist,
+											 Global_paramlist_ = Global_paramlist){
+	
+
 ## Loading packages
 
-paramlist_ <- paramlist
-Global_paramlist_ <- Global_paramlist
+# paramlist_ <- paramlist
+# Global_paramlist_ <- Global_paramlist
 
 assign_parmsList(Global_paramlist_, envir = environment())
 assign_parmsList(paramlist_,  envir = environment())
 
-bfactor_DA
-dr_DA
-infl
-idxFull_DA
+# bfactor_DA
+# dr_DA
+# infl
+# idxFull_DA
 
-ncore <- 7
-nsim  <- 100
-
-## add an index variable
-
-# bfactor <- 0.022 # the 
-# dr      <- 0.05
-# infl    <- 0.02 # assuming constant inflation rate, expected = actual
-# salgrowth <- 0.03
+ncore <- 6
+nsim  <- 5
 
 
 
 #******************************************************************************* 
 #                 Loading data from Model_Main   ####
 #*******************************************************************************
-
 
 ## loading demographic data
 load("Inputs/riskShaing_demographics_100y.RData")
@@ -55,7 +52,6 @@ load("Inputs/riskShaing_demographics_100y.RData")
 # df_terms
 # decrement
 
-nyear
 
 
 #******************************************************************************* 
@@ -67,8 +63,6 @@ df_decrements_DA <-
 	select(ea, age, qxm, qxt, qxd, qxr) %>% 
 	group_by(ea) %>% 
 	mutate(
-		
-		
 		
 		# Prob of survival in each year
 		# For actives (age<60): decrements include mortality, termination and disability
@@ -128,20 +122,12 @@ df_decrements_DA <-
 	)
 
 
-df_decrements_DA %>% 
-	filter(ea == 30)
-
-
-
 #*******************************************************************************
 #                           ### select the group to model  ####                      
 #*******************************************************************************
 
-# pick a single cohort to model:
-  # - start_year: 1
-  # - ea: 30
 
-# Active members
+## Active members
 df_actives_sim0 <- 
   df_actives %>% 
 	mutate(start_year = year - (age-ea),
@@ -150,28 +136,18 @@ df_actives_sim0 <-
 	# filter(start_year %in% 1 & ea %in% c(30,31) |
 	# 			 start_year %in% -1 & ea %in% c(20, 21)
 	# 			 ) %>%
-	# filter(start_year <= 40
-	# ) %>%
 	filter(age < age_ret) %>% 
-	
-	# # TEMP: accured benefits for initial members in year 1
-	# #       Use the current salary as the indexed salarly 
-	# mutate(Bx = ifelse(start_year <=1 & year == 1, yos * bfactor_DA * sx, 0)
-	# 			 ) %>% 
 	select(start_year, ea, age, yos, year, ret_year, sx, n_actives = number.a) %>% 
 	left_join(df_decrements_DA %>%
 							select(-year),
 						by = c("ea", "age"))
-# df_actives_sim0 %>% filter(start_year <= 1, year == 1) %>% pull(n_actives) %>% sum
 
 
-# Service retirees
-
+## Service retirees
 # Notes: 
 #  - For existing members in year 1, only the benefit values in year 1 will be used. 
 #  - For all future members (start_year >= 2), only the benefit values at retirement age will be used. 
 #  - ax.r is the annuity factor at age x (PV of future annuity payments for $1's payment at current age). 
-
 
 df_servRet_sim0 <- 
   df_retirees %>% 
@@ -217,26 +193,12 @@ df_servRet_sim0 %<>%
 						by = c("ea", "age"))
 
 
-
 df_servRet_sim0 %>%
 	arrange(start_year, ea) %>%
 	filter(start_year == 3, ea == 20)
 
-# df_retirees %>%
-# 	rename(B  = B.r,
-# 				 n_servRet  = number.r,
-# 				 ret_year   = year.retire 
-# 	) %>%
-# 	mutate(start_year = year - (age - ea),
-# 				 # ret_year   = start_year + (age_ret - ea), # This is the first retirement year (age 60) 
-# 				 ret_age    = age - (year - ret_year)
-# 				 
-# 	) %>% 
-# 	filter(start_year == 3, ea == 20, ret_age == 60)
-
 
 ## combine actives and retirees
-
 df_indiv_sim0 <- 
 	bind_rows(
 		df_actives_sim0,
@@ -247,17 +209,20 @@ df_indiv_sim0 <-
 
 
 
+
 # TEMP: 
 #   - accured benefits for initial members in year 1
 #   - Use the current salary as the indexed salarly 
 #   - assume full index in year 0   
 
 # TODO: initial accrued benefit consistent with salary history before year 1 
-#       A
 
 
 df_indiv_sim0 %<>% 
 	mutate(
+		     
+		    
+		
 		     # accrued benefit for initial active members
 		     Bx          = ifelse(start_year <= 1 & year == 1 & age < age_ret, yos * bfactor_DA * sx, 0),
   			 Bx_new      = ifelse(start_year <= 1 & year == 1 & age < age_ret, bfactor_DA * sx * (1 + idxFull_DA), 0),
@@ -309,17 +274,10 @@ df_indiv_sim0 %<>%
 
 ## Create a series of hypothetical benefit indices:
 ben_idx_vec <- rep(0.02, nyear)
-ben_idx_vec[c(6:10, 21:25, 36:40)] <- 0
+# ben_idx_vec[c(6:10, 21:25, 36:40)] <- 0
 # ben_idx_vec
 
 
-
-## Generate investment returns
-#i.r <- rep(0.075, nyear)
-#i.r[6:7] <- 0.0
-
-# set.seed(1234);i.r <- rnorm(nyear, 0.075, 0.12)
-# i.r
 
 ## Asset-shock scenario
 i.crisis <- rep(i.mean - i.sd^2/2, nyear)
@@ -360,7 +318,15 @@ df_agg_sim0 <-
 				 FR_noIdx   = 0,
 				 NC         = 0,
 				 SC         = 0,
+				 
+				 EEC        = 0,
+				 ERC        = 0,
 				 C          = 0,
+				 
+				 ADC    = 0, 
+				 ADC.ER = 0,
+				 C_ADC  = 0,
+				 
 				 B          = 0,
 				 I.e        = 0,
 				 I.r        = 0,
@@ -368,7 +334,15 @@ df_agg_sim0 <-
 				 )
 
 
-start_time <- Sys.time()	
+## total payroll
+df_agg_sim0 %<>% 
+	left_join(df_indiv_sim0 %>% 
+							group_by(year) %>% 
+							summarise(PR = sum(n_actives * sx, na.rm = TRUE),
+												.groups = "drop"),
+						by = "year"
+	)
+
 
 cl <- makeCluster(ncore) 
 registerDoParallel(cl)
@@ -394,7 +368,6 @@ df_agg_temp_year1 <- filter(df_indiv_sim, year == 1) %>%
 						B  = sum(n_servRet * B, na.rm = TRUE),
 						NC = sum(n_actives * NCx_fullIdx, na.rm = TRUE)
 	) 
-
 
 
 # filter(df_indiv_sim, year == 1) %>% 
@@ -432,25 +405,12 @@ df_agg_sim$FR_noIdx[1]   <- with(df_agg_sim, MA[1] / AL_noIdx[1])
 ben_idx_vec[1] <- with(df_agg_sim, min(1, max(0, (MA[1] - AL_noIdx[1])/(AL_fullIdx[1] - AL_noIdx[1])))) * idxFull_DA
 
 
-## total payroll
-df_agg_sim %<>% 
-	left_join(df_indiv_sim %>% 
-							group_by(year) %>% 
-							summarise(sx = sum(n_actives * sx, na.rm = TRUE)),
-						by = "year"
-	)
-
+# converting to list for faster speed
 df_agg_sim <- unclass(df_agg_sim)
 
 
 for(j in 2:nyear){
-
-	# j=2
-	# df_indiv_sim0 %>%
-	# 	filter(start_year == -1, ea == 20)
-	# 
-	# df_indiv_sim %>%
-	# 	filter(start_year == -10)
+	
 	# j = 1
 	
   # 1. Determining MA based on the cash flows in previous year
@@ -469,9 +429,7 @@ for(j in 2:nyear){
 			     ## Updating accured benefits for active members 
 			     #  all values are for a single member
 			     Bx     = ifelse(year == j & (age-ea) != 0, lag((Bx + sx * bfactor_DA) * (1 + ben_idx_vec[j-1])) , Bx),
-					 # Bx_new = ifelse(year == j, ((sx * bfactor_DA) * (1 + ben_idx_vec[j])), Bx_new),
-					 
-					 
+					
 					 # Determine the starting benefit level upon retirement
 					 # Note that do not need to do this for retirees in year 1 
 					 B = ifelse(year == j & ret_year == j & ret_year > 1, Bx, B),
@@ -479,21 +437,24 @@ for(j in 2:nyear){
 					 # Update benefit with index
 					 B = ifelse(year == j & year > ret_year, lag(B * (1 + ben_idx_vec[j-1])), B),
 					 
+					 
 					 # Real liability: assuming full index
-					 ALx_fullIdx = ifelse(age < age_ret, Bx * fct_ALx_fullIdx, B * ax1_age2death_fullIdx),
+					 #ALx_fullIdx = ifelse(age < age_ret, Bx * fct_ALx_fullIdx, B * ax1_age2death_fullIdx),
 					 
 					 # Nominal liability assuming full index
-					 ALx_noIdx   = ifelse(age < age_ret, Bx * fct_ALx_noIdx,   B * ax1_age2death_noIdx),
-					 
-					 # Normal costs
-					 # NCx_fullIdx = Bx_new * fct_NCx_fullIdx
+					 #ALx_noIdx   = ifelse(age < age_ret, Bx * fct_ALx_noIdx,   B * ax1_age2death_noIdx),
 					 )
 	
 	df_agg_temp1 <- filter(df_indiv_sim, year == j) %>% 
-	               	summarise(AL_fullIdx = sum((n_actives + n_servRet) * ALx_fullIdx, na.rm = TRUE),
+		              mutate(
+		              	# Real liability: assuming full index
+		              	ALx_fullIdx = ifelse(age < age_ret, Bx * fct_ALx_fullIdx, B * ax1_age2death_fullIdx),
+
+		              	# Nominal liability assuming full index
+		              	ALx_noIdx   = ifelse(age < age_ret, Bx * fct_ALx_noIdx,   B * ax1_age2death_noIdx)) %>%
+		               
+	                	summarise(AL_fullIdx = sum((n_actives + n_servRet) * ALx_fullIdx, na.rm = TRUE),
 	               						AL_noIdx = sum((n_actives + n_servRet) * ALx_noIdx, na.rm = TRUE)
-	               						# B  = sum(n_servRet * B, na.rm = TRUE),
-	               						# NC = sum(n_actives * NCx_fullIdx, na.rm = TRUE)
 	               						) 
 		 
 	df_agg_sim$AL_fullIdx[j] <- df_agg_temp1$AL_fullIdx
@@ -514,7 +475,19 @@ for(j in 2:nyear){
 	
   
 	# 5 and 6. determining benefit accrual and normal cost based on salary and indexation determined in the previous step
-	df_indiv_sim %<>% 
+	# df_indiv_sim %<>% 
+	# 	mutate(
+	# 		## Updating accured benefits for active members 
+	# 		#  all values are for a single member
+	# 		Bx_new = ifelse(year == j, ((sx * bfactor_DA) * (1 + ben_idx_vec[j])), Bx_new),
+	# 		
+	# 		# Normal costs
+	# 		NCx_fullIdx = Bx_new * fct_NCx_fullIdx
+	# 	)
+	
+	
+	## aggregate benefit and normal cost
+	df_agg_temp2 <- filter(df_indiv_sim, year == j) %>% 
 		mutate(
 			## Updating accured benefits for active members 
 			#  all values are for a single member
@@ -522,26 +495,65 @@ for(j in 2:nyear){
 			
 			# Normal costs
 			NCx_fullIdx = Bx_new * fct_NCx_fullIdx
-		)
-	
-	
-	## aggregate benefit and normal cost
-	df_agg_temp2 <- filter(df_indiv_sim, year == j) %>% 
-		summarise(# AL_fullIdx = sum((n_actives + n_servRet) * ALx_fullIdx, na.rm = TRUE),
-							# AL_noIdx = sum((n_actives + n_servRet) * ALx_noIdx, na.rm = TRUE)
-							B  = sum(n_servRet * B, na.rm = TRUE),
+		) %>% 
+		summarise(B  = sum(n_servRet * B, na.rm = TRUE),
 							NC = sum(n_actives * NCx_fullIdx, na.rm = TRUE)
 		)
-	df_agg_sim$B[j]          <- df_agg_temp2$B
-	df_agg_sim$NC[j]         <- df_agg_temp2$NC
+	df_agg_sim$B[j]  <- df_agg_temp2$B
+	df_agg_sim$NC[j] <- df_agg_temp2$NC
   
 	
 	# Amortization cost
 	df_agg_sim$SC[j] <- amort_LG(df_agg_sim$UAAL_fullIdx[j], dr_DA, m, salgrowth_amort, end = FALSE, method = amort_method)[1]
 	
+	
 	# Total contribution
-	df_agg_sim$C[j]         <- 	df_agg_sim$NC[j] + df_agg_sim$SC[j]  
-
+	
+	## EEC is a fixed share of total payroll
+	if(EEC_type == "fixed" & cola_type != "SDRS"){
+		# Employee contribution, based on payroll. May be adjusted later. 
+		df_agg_sim$EEC[j] <- with(df_agg_sim, PR[j] * EECrate_fixed)
+		
+		if(nonNegC){
+			df_agg_sim$ADC[j]    <- with(df_agg_sim, max(0, NC[j] + SC[j])) 
+			df_agg_sim$ADC.ER[j] <- with(df_agg_sim, ifelse(ADC[j] > EEC[j], ADC[j] - EEC[j], 0)) 
+			
+			# Adjustment of EEC
+			if(!EEC_fixed) df_agg_sim$EEC[j] <- with(df_agg_sim, ifelse(ADC[j] > EEC[j], EEC[j], ADC[j])) # df_agg_sim$EEC[j] <- with(df_agg_sim, EEC[j]) else
+			
+		} else {
+			# Allow for negative ADC and C  
+			df_agg_sim$ADC[j]    <- with(df_agg_sim, NC[j] + SC[j]) 
+			
+			if(EEC_fixed) {df_agg_sim$ADC.ER[j] <- with(df_agg_sim, ADC[j] - EEC[j]) # EEC is fixed
+			# EEC is not fixed
+			# 1. when ADC > EEC. Employees pay fixed EEC and employer pays the rest
+			} else if(with(df_agg_sim, ADC[j] > EEC[j])) {
+				df_agg_sim$ADC.ER[j] <- with(df_agg_sim, ADC[j] - EEC[j]) 
+				# 2. when 0 < ADC < EEC. Employees pay the entire ADC and employer pays 0. 
+			} else if(with(df_agg_sim, ADC[j] <= EEC[j] & ADC[j] > 0)) {
+				df_agg_sim$ADC.ER[j] <- 0
+				df_agg_sim$EEC[j]    <- with(df_agg_sim, ADC[j])
+				# 3. when ADC < 0, employees pay zero and employer pays nagative value (withdraw -ADC)
+			} else if(with(df_agg_sim, ADC[j] <= 0)) {
+				df_agg_sim$ADC.ER[j] <- with(df_agg_sim, ADC[j])
+				df_agg_sim$EEC[j]    <- 0
+			}
+		}
+		
+		# ERC
+		df_agg_sim$ERC[j] <- with(df_agg_sim, ADC.ER[j])
+	}
+	
+	
+	
+	# df_agg_sim$C[j]         <- 	df_agg_sim$NC[j] + df_agg_sim$SC[j]  
+  
+	# C(j)
+	df_agg_sim$C[j] <- with(df_agg_sim, EEC[j] + ERC[j])
+	
+	# C(j) - ADC(j)
+	df_agg_sim$C_ADC[j] <- with(	df_agg_sim, C[j] - ADC[j])
 }
 
 as.data.frame(df_agg_sim)
@@ -550,56 +562,47 @@ as.data.frame(df_agg_sim)
 
 stopCluster(cl)
 
-end_time <- Sys.time()
-print(end_time  - start_time)
 
-
-# penSim_results <- 
-# 	bind_rows(penSim_results) %>% 
-# 	mutate(runname   = runname,
-# 				 cola_type = cola_type,
-# 				 policy_type = policy_type,
-# 				 return_scn  = return_scn,
-# 				 sim     = rep(-2:nsim, each = nyear)) %>% 
-# 	group_by(sim) %>% 
-# 	mutate(
-# 		AL_std  = AL / AL[year == 1],
-# 		B_std   = B / B[year == 1],
-# 		C_std   = C / C[year == 1],
-# 		ERC_PR  = ERC/ salary,
-# 		EEC_PR  = EEC/ salary,
-# 		NC_PR   = NC / salary
-# 	) %>% 
-# 	select(runname, cola_type, sim, year, AL, MA, FR_MA, ERC_PR,EEC_PR, NC_PR, AL_std, B_std, C_std, # DC_MA, 
-# 				 everything()) %>% 
-# 	as_tibble()
-
-
-
-penSim_results <-
-	bind_rows(penSim_results) %>%
+bind_rows(penSim_results) %>%
 	mutate(runname   = runname,
 				 cola_type = cola_type,
 				 policy_type = policy_type,
 				 return_scn  = return_scn,
 				 sim     = rep(-2:nsim, each = nyear)) %>% 
 	group_by(sim) %>% 
-	mutate(C_PR    = 100 * C / sx,
-				 NC_PR   = NC / sx) %>% 
+	mutate(C_PR    = 100 * C / PR,
+				 NC_PR   = NC / PR) %>% 
 	relocate(runname, sim, year)
 
-
-# df_agg_sim %>% 
-# 	select(year, AL_fullIdx, NC_PR, C_PR, FR_fullIdx, sx)
-# 
+}
 
 
+## Run simulation
+
+{
+	start_time <- Sys.time()	
+	penSim_results <- run_sim_DA()
+	print(Sys.time() - start_time)
+	suppressMessages(gc())
+}
+
+
+
+
+
+#*******************************************************************************
+#                           ### check results ####                      
+#*******************************************************************************
+
+penSim_results %>% 
+	filter(sim == 0) %>% 
+	select(sim, year, AL_fullIdx, NC_PR, C_PR, FR_fullIdx, PR)
 
 # df_indiv_sim %>% filter(start_year == 1,  ea == 31)
 # df_indiv_sim %>% filter(start_year == -10)
 
 
-# 
+
 # load("Outputs/Outputs_baseline.RData")
 # outputs_list$results %>% 
 # 	filter(sim == 0) %>% 
@@ -610,11 +613,3 @@ penSim_results <-
 # outputs_list$results %>% 
 # 	filter(sim == 0) %>% 
 # 	select(sim, year, AL, NC, SC, NC_PR, salary, ERC_PR, EEC_PR)
-# 
-
-outputs_list <- list(paramlist        = paramlist,
-										 Global_paramlist = Global_paramlist,
-										 results          = penSim_results)
-
-
-save(outputs_list, file = paste0(dir_Outputs, "Outputs_", runName, ".RData"))
