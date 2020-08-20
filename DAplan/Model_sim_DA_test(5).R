@@ -30,7 +30,8 @@ dr_DA
 infl
 idxFull_DA
 
-
+ncore <- 7
+nsim  <- 100
 
 ## add an index variable
 
@@ -311,18 +312,31 @@ ben_idx_vec <- rep(0.02, nyear)
 ben_idx_vec[c(6:10, 21:25, 36:40)] <- 0
 # ben_idx_vec
 
-## Create investment returns
+
+
+## Generate investment returns
 #i.r <- rep(0.075, nyear)
 #i.r[6:7] <- 0.0
 
-set.seed(1234);i.r <- rnorm(nyear, 0.075, 0.12)
-i.r
+# set.seed(1234);i.r <- rnorm(nyear, 0.075, 0.12)
+# i.r
+
+## Asset-shock scenario
+i.crisis <- rep(i.mean - i.sd^2/2, nyear)
+i.crisis[2:5] <- c(-0.24, 0.12, 0.12, 0.12)
 
 
+## Stochastic returns
+set.seed(1234) ;i.r0 <- matrix(rnorm(nyear*nsim, i.mean, i.sd), nyear, nsim)
+i.r0 <- cbind(rep(i.mean - i.sd^2/2, nyear), i.r0)
+i.r0 <- cbind(i.crisis, i.crisis, i.r0)
+colnames(i.r0) <- -2:nsim
+# i.r_ <- i.r
+# i.r0
 
 
 #*******************************************************************************
-#                           ### valuation  ####                      
+#                           ### Simulation ####                      
 #*******************************************************************************
 
 # Need to calculat the following in each period
@@ -335,10 +349,9 @@ i.r
 
 
 
-
 ## Create a data frame for aggregate valuation results
 df_agg_sim0 <- 
-	data.frame(year =  1:nyear) %>% 
+	data.frame(year   = 1:nyear) %>% 
 	mutate(AL_fullIdx = 0,
 				 AL_noIdx   = 0,
 				 MA         = 0,
@@ -351,16 +364,31 @@ df_agg_sim0 <-
 				 B          = 0,
 				 I.e        = 0,
 				 I.r        = 0,
-				 I.diff      = 0
+				 I.diff     = 0
 				 )
 
 
+start_time <- Sys.time()	
 
+cl <- makeCluster(ncore) 
+registerDoParallel(cl)
 
+penSim_results <- foreach(k = -2:nsim, .packages = c("dplyr", "tidyr", "magrittr", "Rcpp")) %dopar% {
+	
+
+	source("Functions.R")
+	
+	# k = 0
+	
+	i.r<- i.r0[, as.character(k)]
+	
+# Initialization 
+df_indiv_sim <- df_indiv_sim0
+df_agg_sim   <- df_agg_sim0
 
 	
 ## Aggregate values in year 1
-df_agg_temp_year1 <- filter(df_indiv_sim0, year == 1) %>% 
+df_agg_temp_year1 <- filter(df_indiv_sim, year == 1) %>% 
 	summarise(AL_fullIdx = sum((n_actives + n_servRet) * ALx_fullIdx, na.rm = TRUE),
 						AL_noIdx = sum((n_actives + n_servRet) * ALx_noIdx, na.rm = TRUE),
 						B  = sum(n_servRet * B, na.rm = TRUE),
@@ -369,7 +397,7 @@ df_agg_temp_year1 <- filter(df_indiv_sim0, year == 1) %>%
 
 
 
-# filter(df_indiv_sim0, year == 1) %>% 
+# filter(df_indiv_sim, year == 1) %>% 
 # 	summarise(AL_fullIdx = sum((n_actives + n_servRet) * ALx_fullIdx, na.rm = TRUE),
 # 						AL_noIdx = sum((n_actives + n_servRet) * ALx_noIdx, na.rm = TRUE),
 # 						B  = sum(n_servRet * B, na.rm = TRUE),
@@ -378,60 +406,44 @@ df_agg_temp_year1 <- filter(df_indiv_sim0, year == 1) %>%
 # 						n_act = sum(n_actives)
 # 	) 
 
-
 # cash flows
-df_agg_sim0$AL_fullIdx[1] <- df_agg_temp_year1$AL_fullIdx
-df_agg_sim0$AL_noIdx[1]   <- df_agg_temp_year1$AL_noIdx
-df_agg_sim0$NC[1]         <- df_agg_temp_year1$NC
-df_agg_sim0$B[1]          <- df_agg_temp_year1$B
+df_agg_sim$AL_fullIdx[1] <- df_agg_temp_year1$AL_fullIdx
+df_agg_sim$AL_noIdx[1]   <- df_agg_temp_year1$AL_noIdx
+df_agg_sim$NC[1]         <- df_agg_temp_year1$NC
+df_agg_sim$B[1]          <- df_agg_temp_year1$B
 
 
 
-df_agg_sim0$MA[1]           <- df_agg_sim0$AL_fullIdx[1] *  MA_0_pct
+df_agg_sim$MA[1]           <- df_agg_sim$AL_fullIdx[1] *  MA_0_pct
 
 
-df_agg_sim0$UAAL_fullIdx[1] <- df_agg_sim0$AL_fullIdx[1] - df_agg_sim0$MA[1]
-df_agg_sim0$SC[1] <- amort_LG(df_agg_sim0$UAAL_fullIdx[1], dr_DA, m, salgrowth_amort, end = FALSE, method = amort_method)[1]
+df_agg_sim$UAAL_fullIdx[1] <- df_agg_sim$AL_fullIdx[1] - df_agg_sim$MA[1]
+df_agg_sim$SC[1] <- amort_LG(df_agg_sim$UAAL_fullIdx[1], dr_DA, m, salgrowth_amort, end = FALSE, method = amort_method)[1]
 
-df_agg_sim0$C[1]         <- df_agg_sim0$NC[1] + df_agg_sim$SC[1]
+df_agg_sim$C[1]         <- df_agg_sim$NC[1] + df_agg_sim$SC[1]
 
 
 
 # funded ratios
-df_agg_sim0$FR_fullIdx[1] <- with(df_agg_sim0, MA[1] / AL_fullIdx[1])
-df_agg_sim0$FR_noIdx[1]   <- with(df_agg_sim0, MA[1] / AL_noIdx[1])
+df_agg_sim$FR_fullIdx[1] <- with(df_agg_sim, MA[1] / AL_fullIdx[1])
+df_agg_sim$FR_noIdx[1]   <- with(df_agg_sim, MA[1] / AL_noIdx[1])
 
 # index 
-ben_idx_vec[1] <- with(df_agg_sim0, min(1, max(0, (MA[1] - AL_noIdx[1])/(AL_fullIdx[1] - AL_noIdx[1])))) * idxFull_DA
+ben_idx_vec[1] <- with(df_agg_sim, min(1, max(0, (MA[1] - AL_noIdx[1])/(AL_fullIdx[1] - AL_noIdx[1])))) * idxFull_DA
 
 
 ## total payroll
-df_agg_sim0 %<>% 
-	left_join(df_indiv_sim0 %>% 
+df_agg_sim %<>% 
+	left_join(df_indiv_sim %>% 
 							group_by(year) %>% 
 							summarise(sx = sum(n_actives * sx, na.rm = TRUE)),
 						by = "year"
 	)
 
+df_agg_sim <- unclass(df_agg_sim)
 
 
-
-
-
-#*******************************************************************************
-#                           ### Simulation ####                      
-#*******************************************************************************
-
-
-# Initialization 
-df_indiv_sim <- df_indiv_sim0
-df_agg_sim   <- unclass(df_agg_sim0)
-
-#i.r <- rnorm(nyear, 0.075, 0.12)
-i.r  <- rep(0.075, nyear)
-
-start_time <- Sys.time()	
-for(j in 2:91){
+for(j in 2:nyear){
 
 	# j=2
 	# df_indiv_sim0 %>%
@@ -532,25 +544,59 @@ for(j in 2:91){
 
 }
 
+as.data.frame(df_agg_sim)
+	
+}
+
+stopCluster(cl)
+
 end_time <- Sys.time()
 print(end_time  - start_time)
 
 
-df_agg_sim %<>% 
-	as_tibble %>% 
-	mutate(ben_idx = ben_idx_vec,
-				 C_PR    = 100 * C / sx,
-				 NC_PR   = NC / sx) 
+# penSim_results <- 
+# 	bind_rows(penSim_results) %>% 
+# 	mutate(runname   = runname,
+# 				 cola_type = cola_type,
+# 				 policy_type = policy_type,
+# 				 return_scn  = return_scn,
+# 				 sim     = rep(-2:nsim, each = nyear)) %>% 
+# 	group_by(sim) %>% 
+# 	mutate(
+# 		AL_std  = AL / AL[year == 1],
+# 		B_std   = B / B[year == 1],
+# 		C_std   = C / C[year == 1],
+# 		ERC_PR  = ERC/ salary,
+# 		EEC_PR  = EEC/ salary,
+# 		NC_PR   = NC / salary
+# 	) %>% 
+# 	select(runname, cola_type, sim, year, AL, MA, FR_MA, ERC_PR,EEC_PR, NC_PR, AL_std, B_std, C_std, # DC_MA, 
+# 				 everything()) %>% 
+# 	as_tibble()
 
-df_agg_sim %>% 
-	select(year, AL_fullIdx, NC_PR, C_PR, FR_fullIdx, sx)
 
+
+penSim_results <-
+	bind_rows(penSim_results) %>%
+	mutate(runname   = runname,
+				 cola_type = cola_type,
+				 policy_type = policy_type,
+				 return_scn  = return_scn,
+				 sim     = rep(-2:nsim, each = nyear)) %>% 
+	group_by(sim) %>% 
+	mutate(C_PR    = 100 * C / sx,
+				 NC_PR   = NC / sx) %>% 
+	relocate(runname, sim, year)
+
+
+# df_agg_sim %>% 
+# 	select(year, AL_fullIdx, NC_PR, C_PR, FR_fullIdx, sx)
+# 
 
 
 
 # df_indiv_sim %>% filter(start_year == 1,  ea == 31)
 # df_indiv_sim %>% filter(start_year == -10)
-
 
 
 # 
@@ -566,5 +612,9 @@ df_agg_sim %>%
 # 	select(sim, year, AL, NC, SC, NC_PR, salary, ERC_PR, EEC_PR)
 # 
 
+outputs_list <- list(paramlist        = paramlist,
+										 Global_paramlist = Global_paramlist,
+										 results          = penSim_results)
 
 
+save(outputs_list, file = paste0(dir_Outputs, "Outputs_", runName, ".RData"))
