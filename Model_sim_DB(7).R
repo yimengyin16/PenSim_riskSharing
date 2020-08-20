@@ -1240,7 +1240,7 @@ for (j in 1:nyear){
 	penSim$I.r[j] <- with(penSim, i.r[j] *( MA[j] + C[j] - B[j])) # C[j] should be multiplied by i.r if assuming contribution is made at year end. 
 	
 	# I.dif(j) = I.r(j) - I.e(j)
-	penSim$I.diff[j] <- with(penSim, I.r[j] - I.e[j])
+	penSim$I.dif[j] <- with(penSim, I.r[j] - I.e[j])
 	
 	
 	# #**************************************************
@@ -1298,13 +1298,23 @@ penSim_results <-
 # Global_paramlist$nsim <- 1000
 # paramlist$cola_type <- "EEC_sharedADC"
 
+
 {
 	start_time <- Sys.time()	
-	penSim_DB_results <- run_sim_regular()
+	penSim_results <- run_sim_regular()
 	print(Sys.time() - start_time)
 	suppressMessages(gc())
 }
 
+
+# 
+# {
+# 	start_time <- Sys.time()	
+# 	penSim_DB_results <- run_sim_regular()
+# 	print(Sys.time() - start_time)
+# 	suppressMessages(gc())
+# }
+# 
 
 
 # penSim_DB_results %>% filter(sim == 1000) %>% print()
