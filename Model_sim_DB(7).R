@@ -513,6 +513,10 @@ i.r_geoReturn_cola <-
 	mutate_all(list(~ get_rollingReturns(., "moving", smoothYear_cola_return)))
 i.r_geoReturn_cola  <- i.r_geoReturn_cola[-(1:10),]
 
+
+# i.r_geoReturn_cola[6,1] >= 0.075 - 0.001
+
+
 # i.r_geoReturn_cola_ <- i.r_geoReturn_cola
 # i.r_geoReturn_cola[1:(smoothYear_cola_return - 1), ] <-  
 # 	i.r[1:(smoothYear_cola_return - 1), ] %>% 
@@ -677,13 +681,13 @@ for (j in 1:nyear){
 	if(cola_type == "return"){
 		
 		# if(penSim$i.r[j] >= dr) penSim$cola_actual[j] <- cola_max_return else penSim$cola_actual[j] <- cola_min_return
-		if(penSim$i.r_geoReturn_cola[j] >= dr) penSim$cola_actual[j] <- cola_max_return else penSim$cola_actual[j] <- cola_min_return
+		if(penSim$i.r_geoReturn_cola[j] >= dr - 0.00001) penSim$cola_actual[j] <- cola_max_return else penSim$cola_actual[j] <- cola_min_return
 		
 	}
 	
 	# funded ratio based COLA
 	if(cola_type == "FR" & infl_type == "constant"){
-		if(penSim$FR_MA[j] >= FR_threshold_FR) penSim$cola_actual[j] <- cola_max_FR else penSim$cola_actual[j] <- cola_min_FR
+		if(penSim$FR_MA[j] >= FR_threshold_FR - 0.00001) penSim$cola_actual[j] <- cola_max_FR else penSim$cola_actual[j] <- cola_min_FR
 	}
 	
 	if(cola_type == "FR" & infl_type == "stochastic"){

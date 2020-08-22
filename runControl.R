@@ -89,12 +89,13 @@ for(runName in runList$runname ){
 	# Global_paramlist$range_age <- with(Global_paramlist, min_age:max_age)
 	# Global_paramlist$range_ea  <- with(Global_paramlist, min_ea:max_ea)
 
+
 	if (paramlist$policy_type == "DA") {
-		source("Model_sim_DA(1).R")
+		source("Model_sim_DA(4).R")
 	} else {
 		source("Model_sim_DB(7).R")
 	}
-	
+
 	outputs_list <- list(paramlist        = paramlist,
 											 Global_paramlist = Global_paramlist,
 											 results          = penSim_results)

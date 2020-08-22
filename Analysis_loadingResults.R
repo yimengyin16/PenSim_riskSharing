@@ -17,7 +17,8 @@ run_labels_FR75 <- c(
 	EEC_FR             = "Contingent EEC: \nFunded ratio",
 	EEC_sharedADCfloor = "Contingent EEC: \nShared ADC",
 	hybrid_DB          = "hybrid_DB",
-	mixed_WRS          = "WRS-like"
+	mixed_WRS          = "WRS-like",
+	DA                 = "conditional indexation"
 	# EEC_sharedNC  = "Contingent EEC: \nshared",
 )
 
@@ -40,8 +41,12 @@ run_labels_FR100 <- c(
 	EEC_sharedADCfloor_FR100 = "Contingent EEC: \nShared ADC\nYear-1 funded ratio 100%",
 	hybrid_DB_FR100     = "hybrid_DB\nYear-1 funded ratio 100%",
 	mixed_WRS_FR100     = "WRS-like funded ratio 100%"
+	# DA_FR100                  = "conditional indexation \funded ratio 100%"
 	# EEC_sharedNC  = "Contingent EEC: \nshared",
 )
+
+
+
 
 run_levels_FR100 <- names(run_labels_FR100)
 run_levels_FR100

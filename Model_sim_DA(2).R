@@ -37,7 +37,7 @@ assign_parmsList(paramlist_,  envir = environment())
 
 # Override param values
 ncore <- 6
-nsim  <- 500
+nsim  <- 2
 
 
 
@@ -102,6 +102,16 @@ df_decrements_DA <-
 		B1_age2death_fullIdx = ifelse(age < age_ret, 0, (1 + idxFull_DA)^(age - age_ret)),
 		
 		
+		
+		# expected benefit for $1 current accrued benefit at ret age (60) assuming floor indexation
+		# B1_age2ret_fullIdx = order_by(-age, cumprod(ifelse(age >= age_ret, 1, (1 + idxFull_DA)))),
+		B1_age2ret_floorIdx   = ifelse(age > age_ret, 0, (1 + idxFloor_DA)^(age_ret - age)),
+		
+		# expected benefit for $1 starting benefit at ret age (60) assuming full indexation
+		B1_age2death_floorIdx = ifelse(age < age_ret, 0, (1 + idxFloor_DA)^(age - age_ret)),
+		
+		
+		
 		# annuity value at current age for $1 current benefit, assuming full indexation 
 		ax1_age2death_fullIdx = order_by(-age, cumsum(B1_age2death_fullIdx * fct_dr_ret2age * p_ret2age )) / (B1_age2death_fullIdx * fct_dr_ret2age * p_ret2age),
 		ax1_age2death_fullIdx = ifelse(age >= age_ret, 	ax1_age2death_fullIdx, 0),
@@ -111,9 +121,17 @@ df_decrements_DA <-
 		ax1_age2death_noIdx = ifelse(age >= age_ret, 	ax1_age2death_noIdx, 0),
 		
 		
+		# annuity value at current age for $1 current benefit, assuming floor indexation
+		ax1_age2death_floorIdx = order_by(-age, cumsum(B1_age2death_floorIdx * fct_dr_ret2age * p_ret2age )) / (B1_age2death_floorIdx * fct_dr_ret2age * p_ret2age),
+		ax1_age2death_floorIdx = ifelse(age >= age_ret, 	ax1_age2death_floorIdx, 0),
+		
+		
 		
 		# AL for $1 of current accrued benefit, full index
-		fct_ALx_fullIdx = B1_age2ret_fullIdx * ax1_age2death_fullIdx[age == age_ret]  * p_age2ret / (1+dr_DA)^(age_ret-age),
+		fct_ALx_fullIdx  = B1_age2ret_fullIdx * ax1_age2death_fullIdx[age == age_ret]  * p_age2ret / (1+dr_DA)^(age_ret-age),
+		
+		# AL for $1 of current accrued benefit, floor index
+		fct_ALx_floorIdx = B1_age2ret_floorIdx * ax1_age2death_floorIdx[age == age_ret]  * p_age2ret / (1+dr_DA)^(age_ret-age),
 		
 		# AL for $1 of current accrued benefit, no index
 		fct_ALx_noIdx = ax1_age2death_noIdx[age == age_ret] * p_age2ret / (1+dr_DA)^(age_ret-age),
@@ -230,8 +248,9 @@ df_indiv_sim0 %<>%
 				 # benefit for initial retirees: deleting all benefit values for non-initial members
 				 B           = ifelse(ret_year > 1 | year > 1, 0, B),
 				 
-				 ALx_fullIdx = ifelse(age< age_ret, Bx * fct_ALx_fullIdx, B * ax1_age2death_fullIdx),
-	  		 ALx_noIdx   = ifelse(age< age_ret, Bx * fct_ALx_noIdx,   B * ax1_age2death_noIdx),
+				 ALx_fullIdx  = ifelse(age< age_ret, Bx * fct_ALx_fullIdx, B * ax1_age2death_fullIdx),
+	  		 # ALx_noIdx  = ifelse(age< age_ret, Bx * fct_ALx_noIdx,   B * ax1_age2death_noIdx),
+				 ALx_floorIdx = ifelse(age< age_ret, Bx * fct_ALx_floorIdx, B * ax1_age2death_floorIdx),
 				 
 				 NCx_fullIdx = Bx_new * fct_NCx_fullIdx,
 				 
@@ -239,7 +258,7 @@ df_indiv_sim0 %<>%
 				 n_servRet = na2zero(n_servRet)
 				 
 		  	 ) %>% 
-	relocate(start_year, ea,age, yos, year, n_actives, n_servRet, sx, B, Bx, Bx_new, ALx_fullIdx, ALx_noIdx) 
+	relocate(start_year, ea,age, yos, year, n_actives, n_servRet, sx, B, Bx, Bx_new, ALx_fullIdx, ALx_floorIdx) # ALx_noIdx) 
 
 
 # df_indiv_sim0 %>% 
@@ -367,7 +386,8 @@ df_agg_sim   <- df_agg_sim0
 ## Aggregate values in year 1
 df_agg_temp_year1 <- filter(df_indiv_sim, year == 1) %>% 
 	summarise(AL_fullIdx = sum((n_actives + n_servRet) * ALx_fullIdx, na.rm = TRUE),
-						AL_noIdx = sum((n_actives + n_servRet) * ALx_noIdx, na.rm = TRUE),
+						# AL_noIdx = sum((n_actives + n_servRet) * ALx_noIdx, na.rm = TRUE),
+						AL_floorIdx = sum((n_actives + n_servRet) * ALx_floorIdx, na.rm = TRUE),
 						B  = sum(n_servRet * B, na.rm = TRUE),
 						NC = sum(n_actives * NCx_fullIdx, na.rm = TRUE)
 	) 
@@ -384,7 +404,8 @@ df_agg_temp_year1 <- filter(df_indiv_sim, year == 1) %>%
 
 # cash flows
 df_agg_sim$AL_fullIdx[1] <- df_agg_temp_year1$AL_fullIdx
-df_agg_sim$AL_noIdx[1]   <- df_agg_temp_year1$AL_noIdx
+# df_agg_sim$AL_noIdx[1]   <- df_agg_temp_year1$AL_noIdx
+df_agg_sim$AL_floorIdx[1]   <- df_agg_temp_year1$AL_floorIdx
 df_agg_sim$NC[1]         <- df_agg_temp_year1$NC
 df_agg_sim$B[1]          <- df_agg_temp_year1$B
 
@@ -405,7 +426,8 @@ df_agg_sim$FR_fullIdx[1] <- with(df_agg_sim, MA[1] / AL_fullIdx[1])
 df_agg_sim$FR_noIdx[1]   <- with(df_agg_sim, MA[1] / AL_noIdx[1])
 
 # index 
-ben_idx_vec[1] <- with(df_agg_sim, min(1, max(0, (MA[1] - AL_noIdx[1])/(AL_fullIdx[1] - AL_noIdx[1])))) * idxFull_DA
+# ben_idx_vec[1] <- with(df_agg_sim, min(1, max(0, (MA[1] - AL_noIdx[1])/(AL_fullIdx[1] - AL_noIdx[1])))) * (idxFull_DA - idxFloor_DA) + idxFloor_DA
+ben_idx_vec[1] <- with(df_agg_sim, min(1, max(0, (MA[1] - AL_floorIdx[1])/(AL_fullIdx[1] - AL_floorIdx[1])))) * (idxFull_DA - idxFloor_DA) + idxFloor_DA
 
 
 # converting to list for faster speed
@@ -452,31 +474,41 @@ for(j in 2:nyear){
 		              mutate(
 		              	# Real liability: assuming full index
 		              	ALx_fullIdx = ifelse(age < age_ret, Bx * fct_ALx_fullIdx, B * ax1_age2death_fullIdx),
-
+                    
+		              	# Nominal liability assuming floor index
+		              	ALx_floorIdx   = ifelse(age < age_ret, Bx * fct_ALx_floorIdx,   B * ax1_age2death_floorIdx)
+		              	
 		              	# Nominal liability assuming full index
-		              	ALx_noIdx   = ifelse(age < age_ret, Bx * fct_ALx_noIdx,   B * ax1_age2death_noIdx)) %>%
+		              	#ALx_noIdx   = ifelse(age < age_ret, Bx * fct_ALx_noIdx,   B * ax1_age2death_noIdx)
+		              	
+		              	) %>%
 		               
-	                	summarise(AL_fullIdx = sum((n_actives + n_servRet) * ALx_fullIdx, na.rm = TRUE),
-	               						AL_noIdx = sum((n_actives + n_servRet) * ALx_noIdx, na.rm = TRUE)
+	                	summarise(AL_fullIdx  = sum((n_actives + n_servRet) * ALx_fullIdx,  na.rm = TRUE),
+	                						AL_floorIdx = sum((n_actives + n_servRet) * ALx_floorIdx, na.rm = TRUE)
+	                						#AL_noIdx = sum((n_actives + n_servRet) * ALx_noIdx, na.rm = TRUE)
 	               						) 
 		 
-	df_agg_sim$AL_fullIdx[j] <- df_agg_temp1$AL_fullIdx
-	df_agg_sim$AL_noIdx[j]   <- df_agg_temp1$AL_noIdx
+	df_agg_sim$AL_fullIdx[j]  <- df_agg_temp1$AL_fullIdx
+	df_agg_sim$AL_floorIdx[j] <- df_agg_temp1$AL_floorIdx
+	#df_agg_sim$AL_noIdx[j]   <- df_agg_temp1$AL_noIdx
+	
 	
 	df_agg_sim$UAAL_fullIdx[j] <- df_agg_sim$AL_fullIdx[j] - df_agg_sim$MA[j]
 	
 	
 
 	# 3. Calculating nominal and real funded ratio
-	df_agg_sim$FR_fullIdx[j] <- with(df_agg_sim, MA[j] / AL_fullIdx[j])
-	df_agg_sim$FR_noIdx[j]   <- with(df_agg_sim, MA[j] / AL_noIdx[j])
+	df_agg_sim$FR_fullIdx[j]  <- with(df_agg_sim, MA[j] / AL_fullIdx[j])
+	df_agg_sim$FR_floorIdx[j] <- with(df_agg_sim, MA[j] / AL_floorIdx[j])
+	# df_agg_sim$FR_noIdx[j]   <- with(df_agg_sim, MA[j] / AL_noIdx[j])
 	
 	
 	
 	# 4. Determining benefit index in year j 
   ben_idx_vec[j] <-  
   	df_agg_sim$ben_idx[j] <- 
-  	with(df_agg_sim, min(1, max(0, (MA[j] - AL_noIdx[j])/(AL_fullIdx[j] - AL_noIdx[j])))) * idxFull_DA
+  	with(df_agg_sim, min(1, max(0, (MA[j] - AL_floorIdx[j])/(AL_fullIdx[j] - AL_floorIdx[j])))) * (idxFull_DA - idxFloor_DA) + idxFloor_DA
+  	#with(df_agg_sim, min(1, max(0, (MA[j] - AL_noIdx[j])/(AL_fullIdx[j] - AL_noIdx[j])))) * idxFull_DA
  
   
   
@@ -552,8 +584,6 @@ for(j in 2:nyear){
 	}
 	
 	
-	
-	# df_agg_sim$C[j]         <- 	df_agg_sim$NC[j] + df_agg_sim$SC[j]  
   
 	# C(j)
 	df_agg_sim$C[j] <- with(df_agg_sim, EEC[j] + ERC[j])
@@ -603,8 +633,9 @@ bind_rows(penSim_results) %>%
 #*******************************************************************************
 
 penSim_results %>% 
-	filter(sim == -2) %>% 
-	select(sim, year, AL_fullIdx, NC_PR, C_PR, FR_fullIdx, PR)
+	filter(sim == 0) %>% 
+	select(sim, year, AL_fullIdx, NC_PR, C_PR, FR_fullIdx, PR, ben_idx) %>% 
+	print()
 
 # df_indiv_sim %>% filter(start_year == 1,  ea == 31)
 # df_indiv_sim %>% filter(start_year == -10)

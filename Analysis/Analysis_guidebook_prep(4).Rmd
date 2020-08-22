@@ -265,6 +265,30 @@ results_stch <-
 	filter(sim >= 1, year <= Nyear) 
 
 
+results_all %>%
+	filter(runname %in% c("baseline", "DA"), sim == 0, year <= 40) %>%
+	select(runname, sim, year, AL, FR_MA, FR_fullIdx, NC, SC, C, ERC, SC_legacy, cola_actual) %>%
+	as_tibble
+
+# 
+# results_all %>% 
+# 	filter(runname %in% c("baseline"), year <= 40) %>% 
+# 	group_by(year) %>% 
+#   summarise(FR_MA_med = quantile(AL, 0.5))
+# 
+# 
+# results_all %>% 
+# 	filter(runname %in% c("DA"), year <= 40) %>% 
+# 	group_by(year) %>% 
+#   summarise(FR_MA_med = quantile(AL, 0.5))
+# 
+# load("Inputs/riskShaing_demographics_bf.5_100y.RData")
+# 
+# df_actives %>% 
+# 	filter(ea == 20, year - (age - ea) == 1) %>% 
+# 	mutate(sx_growth = sx/lag(sx) - 1)
+
+
 ## PV ERC and EEC 
 df_PVC <- 
   results_stch %>% 
@@ -305,6 +329,7 @@ df_PVC_qtiles <-
 						EEC_PV_q25 = quantile(EEC_PV, 0.25),
 						EEC_PV_q10 = quantile(EEC_PV, 0.1)
 						)
+
 
 # df_PVC_qtiles
 # Why PV ERC of SDRS is so low, even with final UAAL?
