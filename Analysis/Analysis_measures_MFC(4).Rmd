@@ -2494,6 +2494,7 @@ fig_shock_ERC2
 fig_shock_ERC3
 
 
+
 df_assetShock_plot %>% filter(year == 10)
 
 

@@ -36,8 +36,8 @@ assign_parmsList(paramlist_,  envir = environment())
 # idxFull_DA
 
 # Override param values
-ncore <- 6
-nsim  <- 500
+ncore <- 4
+# nsim  <- 500
 
 
 
