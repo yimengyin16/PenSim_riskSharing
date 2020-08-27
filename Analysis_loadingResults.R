@@ -12,10 +12,12 @@ run_labels_FR75 <- c(
 	cola_FR_calib      = "Contingent COLA: \nFunded ratio threshold\ncalib",
 	cola_FRramp        = "Contingent COLA: \nFunded ratio ramp",
 	cola_SDRS          = "SDRS fast repayment",
+	cola_SDRS_noCAeec  = "SDRS fast repayment,\nno CA EEC",
 	EEC_return         = "Contingent EEC: \nReturn",
 	EEC_returnSmooth   = "Contingent EEC: \nReturn smoothed",
 	EEC_FR             = "Contingent EEC: \nFunded ratio",
 	EEC_sharedADCfloor = "Contingent EEC: \nShared ADC",
+	EEC_sharedADC      = "Contingent EEC: \nShared ADC 0 floor",
 	hybrid_DB          = "hybrid_DB",
 	mixed_WRS          = "WRS-like",
 	DA                 = "conditional indexation"
@@ -71,7 +73,7 @@ results_all <- get_results(dir_modelResults) %>%
 				 #ERC_PR = ERC / salary,
 				 #ERC2   = NC.ER + SC, # For SDRS policy analysis only
 				 #ERC2_PR = ERC2 / salary
-				 PR = EEC/EEC_PR,
+				 PR = ifelse(str_detect(runname, "DA"), PR, EEC/EEC_PR),
 				 SC_legacy = na2zero(SC_legacy)
 	) 
 
@@ -105,8 +107,8 @@ results_all %<>%
 				 
 				 C = EEC + ERC,
 				 
-				 ERC_PR = ERC / salary,
-				 EEC_PR = EEC / salary
+				 ERC_PR =  ifelse(str_detect(runname, "DA"), ERC/PR, ERC / salary),
+				 EEC_PR =  ifelse(str_detect(runname, "DA"), EEC/PR, EEC / salary)
 	)
 
 # results_all %>% filter(runname %in% c("baseline", "hybrid_DB"), sim == 0, year <=20) %>% 

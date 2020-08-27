@@ -57,8 +57,15 @@ runnames_show_calib_labels <- c(
 	EEC_FR             = "Contingent EEC:\nFunded ratio",
 	
 	hybrid_DB = "hybrid DB-DC",
+
+	EEC_sharedADCfloor = "shared ADC\n 5% floor", #
+	EEC_sharedADC      = "shared ADC\n no floor", #
+	
 	mixed_WRS = "WRS-like",
 	cola_SDRS = "SDRS-like",
+	
+	cola_SDRS_noCAeec = "SDRS-like\nno CA EEC", #
+	
 	DA        = "conditional \nindexation"
 )
 runnames_show_calib <- names(runnames_show_calib_labels)
@@ -82,15 +89,23 @@ runnames_cost1 <- names(runnames_cost1_labels)
 runnames_cost2_labels <- c(
 	baseline           = "Baseline",
 
-	cola_returnSmooth_calib  = "Contingent COLA:\nReturn smoothed \ncalib",
-	cola_FR_calib            = "Contingent COLA:\nFunded ratio \ncalib",
+	cola_returnSmooth_calib  = "Contingent \nCOLA:\nReturn smoothed \ncalib",
+	cola_FR_calib            = "Contingent \nCOLA:\nFunded ratio \ncalib",
 
-	EEC_returnSmooth   = "Contingent EEC:\nReturn smoothed",
-	EEC_FR             = "Contingent EEC:\nFunded ratio",
+	EEC_returnSmooth   = "Contingent \nEEC:\nReturn smoothed",
+	EEC_FR             = "Contingent \nEEC:\nFunded ratio",
 	
-  hybrid_DB = "hybrid DB-DC",
+	
+  hybrid_DB = "hybrid \nDB-DC",
+	
+	EEC_sharedADCfloor = "shared ADC\n 5% floor", #
+	EEC_sharedADC      = "shared ADC\n no floor", #
+	
 	mixed_WRS = "WRS-like",
 	cola_SDRS = "SDRS-like",
+	
+  cola_SDRS_noCAeec = "SDRS-like\nno CA EEC",  #
+	
 	DA        = "conditional \nindexation"
 	
 )
@@ -130,6 +145,7 @@ source(here::here("Analysis_loadingResults.R"))
 # Outputs: 
    # results_all
    # run_labels
+
 
 
 ```
@@ -207,47 +223,70 @@ df_cola_qtiles %>%
 #    4) 25th percentile and below [)
 # Grouping can be done based on other variables (e.g. std of return)
 
-df_CAGR40 <- 
+get_CAGR <- function(df, span){
+
+# span <- 40
+	
+df_CAGR <- 
 results_all %>% 
-	filter(runname == "baseline", sim >= 1) %>% 
+	filter(runname == "baseline", sim >= 1, year <= span) %>% 
 	group_by(sim) %>% 
-	summarise(CAGR40 = get_geoReturn(i.r)) 
+	summarise(CAGR = get_geoReturn(i.r)) 
   #summarise(CAGR40 = sd(i.r)) 
 
-grpVals_CAGR40 <-
-	df_CAGR40 %>% 
-	summarise(CAGR40_pinf= Inf,
-		        CAGR40_q90 = quantile(CAGR40, 0.80),
-						CAGR40_q75 = quantile(CAGR40, 0.60),
-						CAGR40_q50 = quantile(CAGR40, 0.50),
-						CAGR40_q25 = quantile(CAGR40, 0.40),
-						CAGR40_q10 = quantile(CAGR40, 0.20),
-						CAGR40_ninf= -Inf,
+grpVals_CAGR <-
+	df_CAGR %>% 
+	summarise(CAGR_pinf= Inf,
+		        CAGR_q80 = quantile(CAGR, 0.80),
+						CAGR_q60 = quantile(CAGR, 0.60),
+						CAGR_q50 = quantile(CAGR, 0.50),
+						CAGR_q40 = quantile(CAGR, 0.40),
+						CAGR_q20 = quantile(CAGR, 0.20),
+						CAGR_ninf= -Inf,
 	) 
 
+grpVals_CAGR_vector <- unlist(grpVals_CAGR[1,2:6])
 
-grpVals_CAGR40_vector <- unlist(grpVals_CAGR40[1,2:6])
-
-df_CAGR40 %<>% 
+df_CAGR %<>% 
 	mutate(
-		grp_CAGR40 = cut(CAGR40, unlist(grpVals_CAGR40[1,])[-4], label = F )
-		# grp_CAGR40 = case_when(
-		# CAGR40 >= grpVals_CAGR40$CAGR40_q90 ~ 1,
-		# CAGR40 >= grpVals_CAGR40$CAGR40_q75 & CAGR40 < grpVals_CAGR40$CAGR40_q90 ~ 2,
-		# CAGR40 >= grpVals_CAGR40$CAGR40_q25 & CAGR40 < grpVals_CAGR40$CAGR40_q75 ~ 3,
-		# CAGR40 >= grpVals_CAGR40$CAGR40_q10 & CAGR40 < grpVals_CAGR40$CAGR40_q25 ~ 4,
-		# CAGR40 < grpVals_CAGR40$CAGR40_q10 ~ 5,
-		# TRUE ~ NA_real_) 
+		grp_CAGR = cut(CAGR, unlist(grpVals_CAGR[1,])[-4], label = F )
 	)
 
 
-grp_CAGR40_labels <- c(
-	"< 6.5%",
-  "6.5%~7.2%",
-  "7.2%~7.9%",
-  "7.9%~8.6%",
-  "> 8.6%"
+#fn <- function(x){paste0(round(x * 100, 1), "%")}
+fn <- function(x){paste0(sprintf("%.1f",x*100), "%")}
+
+
+
+cutoff <- c(
+	paste0("< ", fn(grpVals_CAGR_vector[5])),
+	paste0(fn(grpVals_CAGR_vector[5]), "~" ,fn(grpVals_CAGR_vector[4])),
+	paste0(fn(grpVals_CAGR_vector[4]), "~" ,fn(grpVals_CAGR_vector[2])),
+	paste0(fn(grpVals_CAGR_vector[2]), "~" ,fn(grpVals_CAGR_vector[1])),
+	paste0("> ", fn(grpVals_CAGR_vector[1]))
 )
+
+# cutoff
+
+list(df     = df_CAGR, 
+		 cutoff = cutoff)
+}
+
+df_CAGR80 <- get_CAGR(results_all, 80)
+df_CAGR40 <- get_CAGR(results_all, 40)
+df_CAGR30 <- get_CAGR(results_all, 30)
+df_CAGR15 <- get_CAGR(results_all, 15)
+
+
+
+# grp_CAGR40_labels <- c(
+# 	"< 6.0%",
+#   "6.0%~7.1%",
+#   "7.1%~8.0%",
+#   "8.0%~9.2%",
+#   "> 9.2%"
+# )
+
 
 
 ```
@@ -261,7 +300,6 @@ grp_CAGR40_labels <- c(
 results_stch <-  
   results_all %>% 
 	filter(sim >= 1, year <= Nyear) 
-
 
 # results_all %>%
 # 	filter(runname %in% c("baseline", "DA"), sim == 0, year <= 40) %>%
@@ -296,6 +334,7 @@ get_PVC <- function(df, span){
 						)
 }
 
+# df_PVC_80y <- get_PVC(results_stch, 80)
 df_PVC_40y <- get_PVC(results_stch, 40)
 df_PVC_30y <- get_PVC(results_stch, 30)
 df_PVC_15y <- get_PVC(results_stch, 15)
@@ -329,6 +368,7 @@ get_PVC_qtiles <- function(df_PVC){
 						)
 }
 
+# df_PVC_qtiles_80y <- get_PVC_qtiles(df_PVC_80y)
 df_PVC_qtiles_40y <- get_PVC_qtiles(df_PVC_40y)
 df_PVC_qtiles_30y <- get_PVC_qtiles(df_PVC_30y)
 df_PVC_qtiles_15y <- get_PVC_qtiles(df_PVC_15y)
@@ -350,16 +390,18 @@ df_PVC_qtiles_15y <- get_PVC_qtiles(df_PVC_15y)
 # zoo::rollapply(x, width = 6, get_nyearMax, fill = NA, align = "right")
 
 
-df_ERCMaxChg <- 
-	results_stch %>% 
+get_ERCMaxChg <- function(df, span){
+
+df_ERCMaxChg <- 		
+  df %>% 
+  filter(sim >= 1, year <= span) %>% 
 	select(runname, runname_wlabel, sim, year, policy_type, ERC_PR) %>%
 	group_by(runname, sim) %>% 
 	mutate(   ERC_PR_chg5y    = rollapply(ERC_PR, width = 6, get_nyearMax, fill = NA, align = "right")) %>% # zoo::rollapply
 	summarise(runname_wlabel = unique(runname_wlabel),
 		        ERC_PR_chg5yMax = max(ERC_PR_chg5y, na.rm = TRUE))
-
-# df_ERCMaxChg
-df_ERCMaxChg_qtile <- 
+	
+  df_ERCMaxChg_qtile <- 
 	df_ERCMaxChg %>% 
 	summarise(runname_wlabel = unique(runname_wlabel),
 						
@@ -368,7 +410,51 @@ df_ERCMaxChg_qtile <-
 						ERC_PR_chg5yMax_q50 = quantile(ERC_PR_chg5yMax, 0.50),
 						ERC_PR_chg5yMax_q25 = quantile(ERC_PR_chg5yMax, 0.25),
 						ERC_PR_chg5yMax_q10 = quantile(ERC_PR_chg5yMax, 0.1)
-						)
+						)	
+  
+  list(
+  	ERCMaxChg = df_ERCMaxChg,
+  	ERCMaxChg_qtile = df_ERCMaxChg_qtile
+  )
+}
+
+# results_all %>% filter(runname == "DA") %>% select(sim, year, ERC, ERC_PR)
+
+
+# df_ERCMaxChg_80y <- get_ERCMaxChg(results_all, 80)
+df_ERCMaxChg_40y <- get_ERCMaxChg(results_all, 40)
+df_ERCMaxChg_30y <- get_ERCMaxChg(results_all, 30)
+df_ERCMaxChg_15y <- get_ERCMaxChg(results_all, 15)
+
+
+# df_ERCMaxChg_15y$ERCMaxChg_qtile
+
+
+
+
+# 
+# results_all %>% 
+# 	filter(sim >= 1, year <= Nyear) 
+# 
+# df_ERCMaxChg <- 
+# 	results_stch %>% 
+# 	select(runname, runname_wlabel, sim, year, policy_type, ERC_PR) %>%
+# 	group_by(runname, sim) %>% 
+# 	mutate(   ERC_PR_chg5y    = rollapply(ERC_PR, width = 6, get_nyearMax, fill = NA, align = "right")) %>% # zoo::rollapply
+# 	summarise(runname_wlabel = unique(runname_wlabel),
+# 		        ERC_PR_chg5yMax = max(ERC_PR_chg5y, na.rm = TRUE))
+# 
+# # df_ERCMaxChg
+# df_ERCMaxChg_qtile <- 
+# 	df_ERCMaxChg %>% 
+# 	summarise(runname_wlabel = unique(runname_wlabel),
+# 						
+# 						ERC_PR_chg5yMax_q90 = quantile(ERC_PR_chg5yMax, 0.90),
+# 						ERC_PR_chg5yMax_q75 = quantile(ERC_PR_chg5yMax, 0.75),
+# 						ERC_PR_chg5yMax_q50 = quantile(ERC_PR_chg5yMax, 0.50),
+# 						ERC_PR_chg5yMax_q25 = quantile(ERC_PR_chg5yMax, 0.25),
+# 						ERC_PR_chg5yMax_q10 = quantile(ERC_PR_chg5yMax, 0.1)
+# 						)
 # df_ERCMaxChg_qtile
 
 
@@ -379,10 +465,10 @@ df_ERCMaxChg_qtile <-
 
 ## Distributions of PV costs
 ```{r, warning=FALSE, echo = FALSE}
-df_PVC_qtiles_plot <- 
-  df_PVC_qtiles_15y %>% 
-	mutate_at(vars(-runname,-runname_wlabel), ~ 100 * . / df_PVC_qtiles_15y$ERC_PV_q50[df_PVC_qtiles_15y$runname == "baseline"]) %>% 
-	select(runname, contains("ERC_PV")) 
+# df_PVC_qtiles_plot <- 
+#   df_PVC_qtiles_15y %>% 
+# 	mutate_at(vars(-runname,-runname_wlabel), ~ 100 * . / df_PVC_qtiles_15y$ERC_PV_q50[df_PVC_qtiles_15y$runname == "baseline"]) %>% 
+# 	select(runname, contains("ERC_PV")) 
 
 df_PVC_qtiles_plot <- 
   df_PVC_qtiles_40y %>% 
@@ -468,104 +554,11 @@ df_PVC_qtiles_y15_plot <-
 	mutate_at(vars(-runname,-runname_wlabel), ~ 100 * . / df_PVC_qtiles_15y$ERC_PV_q50[df_PVC_qtiles_15y$runname == "baseline"]) %>% 
 	select(runname, contains("ERC_PV")) 
    
-   
-
-# runnames_pvERC_p1 <- c(
-# 	baseline                 = "Baseline",
-# 
-# 	cola_returnSmooth_calib  = "Contingent COLA:\n5-year return",
-# 	cola_FR_calib            = "Contingent COLA:\nFunded ratio",
-# 
-# 	EEC_returnSmooth         = "Contingent EEC:\n5-year return",
-# 	EEC_FR                   = "Contingent EEC:\nFunded ratio"
-# 	
-# #   hybrid_DB                = "Hybrid DB-DC",
-# # 	mixed_WRS                = "WRS-like",
-# # 	cola_SDRS                = "SDRS-like",
-# # 	DA                       = "Conditional \nindexation" 
-# )
-# #runnames_pvERC_p1 <- names(runnames_pvERC_p1)
-# 
-# 
-#   
-# runnames_pvERC_p2 <- c(
-# 	baseline                 = "Baseline",
-# 
-# 	# cola_returnSmooth_calib  = "Contingent COLA:\n5-year Return",
-# 	# cola_FR_calib            = "Contingent COLA:\nFunded ratio",
-# 	# 
-# 	# EEC_returnSmooth         = "Contingent EEC:\n5-year Return",
-# 	# EEC_FR                   = "Contingent EEC:\nFunded ratio",
-# 	# 
-#   hybrid_DB                = "Hybrid DB-DC",
-# 	mixed_WRS                = "WRS-like",
-# 	cola_SDRS                = "SDRS-like",
-# 	DA                       = "Conditional \nindexation" 
-# )
-#runnames_pvERC_p2 <- names(runnames_pvERC_p2)
-
-
-
-
-# fig_title    <- paste0("Distributions of the present value ", nyear_pvERC, "-year employer contribution (ERC) \nunder DB-based risk-sharing policies") 
-#   fig_dist_pvERC_y30_p1 <- 
-#   df_PVC_qtiles_plot %>% 
-#   filter(runname %in% names(runnames_pvERC_p1)) %>% 
-# 	mutate(runname = factor(runname, levels = names(runnames_pvERC_p1), 
-# 													         labels = runnames_pvERC_p1)) %>% 
-# 	ggplot(aes(x = runname)) + 
-# 	geom_boxplot(width = 0.4,
-# 							 stat = "identity",
-# 							 aes(ymin   = ERC_PV_q10,
-# 							 	 	lower   = ERC_PV_q25,
-# 							 		middle  = ERC_PV_q50,
-# 							 		upper   = ERC_PV_q75,
-# 							 		ymax    = ERC_PV_q90)
-# 	) + 
-# 	geom_hline(yintercept =
-# 						 filter(df_PVC_qtiles_plot, runname == "baseline") %>% pull(ERC_PV_q50),
-# 						 linetype = 2) +
-# 	coord_cartesian(ylim = c(0, 200)) + 
-# 	scale_y_continuous(breaks = seq(0, 300, 20)) + 
-# 	labs(title = fig_title,
-# 			 subtitle = NULL,# fig_subtitle,
-# 			 x = NULL, 
-# 			 y = "Present value of ERC")
-# 
-# fig_dist_pvERC_y30_p1
-# save_figure(fig_dist_pvERC_y30_p1, dir_outputs, w = 10, h = 10, scale = 0.65)
-# 
-# 
-# fig_title    <- paste0("Distributions of the present value ", nyear_pvERC, "-year employer contribution (ERC) \nunder more-complex risk-sharing policies") 
-#   fig_dist_pvERC_y30_p2 <- 
-#   df_PVC_qtiles_plot %>% 
-#   filter(runname %in% names(runnames_pvERC_p2)) %>% 
-# 	mutate(runname = factor(runname, levels = names(runnames_pvERC_p2), 
-# 													         labels = runnames_pvERC_p2)) %>% 
-# 	ggplot(aes(x = runname)) + 
-# 	geom_boxplot(width = 0.4,
-# 							 stat = "identity",
-# 							 aes(ymin   = ERC_PV_q10,
-# 							 	 	lower   = ERC_PV_q25,
-# 							 		middle  = ERC_PV_q50,
-# 							 		upper   = ERC_PV_q75,
-# 							 		ymax    = ERC_PV_q90)
-# 	) + 
-# 	geom_hline(yintercept =
-# 						 filter(df_PVC_qtiles_plot, runname == "baseline") %>% pull(ERC_PV_q50),
-# 						 linetype = 2) +
-# 	coord_cartesian(ylim = c(0, 200)) + 
-# 	scale_y_continuous(breaks = seq(0, 300, 20)) + 
-# 	labs(title = fig_title,
-# 			 subtitle = NULL,# fig_subtitle,
-# 			 x = NULL, 
-# 			 y = "Present value of ERC")
-#  
-# fig_dist_pvERC_y30_p2
-# save_figure(fig_dist_pvERC_y30_p2, dir_outputs, w = 10, h = 10, scale = 0.65)
-# 
-# 
-
+df_PVC_qtiles_y80_plot <- 
+  df_PVC_qtiles_80y %>% 
+	mutate_at(vars(-runname,-runname_wlabel), ~ 100 * . / df_PVC_qtiles_80y$ERC_PV_q50[df_PVC_qtiles_80y$runname == "baseline"]) %>% 
+	select(runname, contains("ERC_PV")) 
+ 
 
 runnames_pvERC <- c(
 	baseline                 = "Baseline",
@@ -581,6 +574,7 @@ runnames_pvERC <- c(
 	cola_SDRS                = "SDRS-like",
 	DA                       = "Conditional \nindexation"
 )
+
 
 
 df_PVC_qtiles_plot <- df_PVC_qtiles_y30_plot 
@@ -656,12 +650,53 @@ fig_title    <- paste0("Distributions of the present value of ", nyear_pvERC, "-
 fig_dist_pvERC_y15_all
 save_figure(fig_dist_pvERC_y15_all, dir_outputs, w = 11, h = 7, scale = 0.8)
 
-
-
 # Questions:
 #  1. why hybrid DB-DC has lower median PV ERC
   
-  
+
+# 
+# df_PVC_qtiles_plot <- df_PVC_qtiles_y80_plot 
+# nyear_pvERC <- 80
+# 
+# fig_title    <- paste0("Distributions of the present value of ", nyear_pvERC, "-year employer contributions (ERC) \nunder different risk-sharing policies") 
+#   fig_dist_pvERC_y80_all <- 
+#   df_PVC_qtiles_plot %>% 
+#   filter(runname %in% names(runnames_pvERC)) %>% 
+# 	mutate(runname = factor(runname, levels = names(runnames_pvERC), 
+# 													         labels = runnames_pvERC)) %>% 
+# 	ggplot(aes(x = runname)) + 
+# 	geom_boxplot(width = 0.4,
+# 							 stat = "identity",
+# 							 aes(ymin   = ERC_PV_q10,
+# 							 	 	lower   = ERC_PV_q25,
+# 							 		middle  = ERC_PV_q50,
+# 							 		upper   = ERC_PV_q75,
+# 							 		ymax    = ERC_PV_q90)
+# 	) + 
+# 	geom_hline(yintercept =
+# 						 filter(df_PVC_qtiles_plot, runname == "baseline") %>% pull(ERC_PV_q50),
+# 						 linetype = 2) +
+#   geom_vline(xintercept = c(1.5, 5.5), linetype = 2, color = "grey60") + 	
+#   annotate("text", x = 3.5, y = 175, label = "DB-based risk-sharing policies") + 
+#   annotate("text", x = 7.5, y = 175, label = "More-complex risk-sharing policies")	+
+# 	
+#   coord_cartesian(ylim = c(0, 180)) + 
+# 	scale_y_continuous(breaks = seq(0, 300, 20)) + 
+# 	labs(title = fig_title,
+# 			 subtitle = NULL,# fig_subtitle,
+# 			 x = NULL, 
+# 			 y = "Present value of ERC") 
+#  
+# fig_dist_pvERC_y80_all
+
+
+fig_dist_pvERC_y15_all
+fig_dist_pvERC_y30_all
+
+# fig_dist_pvERC_y80_all
+
+ 
+ 
   
 ```
 
@@ -675,12 +710,12 @@ save_figure(fig_dist_pvERC_y15_all, dir_outputs, w = 11, h = 7, scale = 0.8)
 ```{r tab_ERC_PV, echo = FALSE}
 
 ptiles_measure <- c(ptile90 = 0.9, ptile75 = 0.75, ptile50 = 0.50, ptile25 = 0.25, ptile10 = 0.1)
-nsim <- filter(df_PVC, runname == "baseline") %>% nrow()
+nsim <- filter(df_PVC_40y, runname == "baseline") %>% nrow()
 fun_sum <- median
 
 # Percentiles of PV costs
 df_PVC_ptiles <- 
-df_PVC %>% 
+df_PVC_40y %>% 
 	select(runname, sim, ERC_PV) %>% 
 	spread(runname, ERC_PV) %>% 
 	arrange(desc(baseline)) %>% 
@@ -693,49 +728,49 @@ df_PVC %>%
 
 # Diff PV costs by quintile
 df_PVC_quintiles <-
-	df_PVC %>% 
+	df_PVC_40y %>% 
 	select(runname, sim, ERC_PV) %>% 
-	left_join(filter(df_PVC, runname == "baseline") %>% ungroup %>% select(sim, ERC_PV_baseline = ERC_PV), by = "sim" ) %>% 
-  left_join(df_CAGR40, by = "sim") %>% 
+	left_join(filter(df_PVC_40y, runname == "baseline") %>% ungroup %>% select(sim, ERC_PV_baseline = ERC_PV), by = "sim" ) %>% 
+  left_join(df_CAGR40$df, by = "sim") %>% 
 	mutate(ERC_PV          = 100 * ERC_PV / df_PVC_ptiles$baseline[df_PVC_ptiles$Percentile == "ptile50"],
 				 ERC_PV_baseline = 100 * ERC_PV_baseline / df_PVC_ptiles$baseline[df_PVC_ptiles$Percentile == "ptile50"],
 		     ERC_PV_diff     = ERC_PV - ERC_PV_baseline,
 				 ERC_PV_diff_pct = 100*( ERC_PV / ERC_PV_baseline - 1)
 				 ) %>% 
-	group_by(runname, grp_CAGR40) %>% 
+	group_by(runname, grp_CAGR) %>% 
 	summarise(ERC_PV          = fun_sum(ERC_PV),
 						ERC_PV_diff     = fun_sum(ERC_PV_diff),
 						ERC_PV_diff_pct = fun_sum(ERC_PV_diff_pct)
 						) %>% 
-  arrange(runname, desc(grp_CAGR40))
+  arrange(runname, desc(grp_CAGR))
 
 
 # Data for making tables
 df_tab_ERC_PV <- 
 df_PVC_quintiles %>% 
-	select(runname, grp_CAGR40 , ERC_PV_diff_pct) %>% 
+	select(runname, grp_CAGR , ERC_PV_diff_pct) %>% 
 	spread(runname, ERC_PV_diff_pct) %>% 
 	# select(grp_CAGR40, one_of(runnames_show1)) %>% 
 	left_join(df_PVC_quintiles %>%  # adding median baseline PV ERC in each group
 							filter(runname == "baseline") %>% 
 							ungroup() %>% 
-							select(grp_CAGR40, ERC_PV_baseline = ERC_PV), 
-						by = "grp_CAGR40") %>% 
-	select(grp_CAGR40, ERC_PV_baseline, everything(), -baseline) %>% 
-	gather(policy, value, -grp_CAGR40) %>% 
+							select(grp_CAGR, ERC_PV_baseline = ERC_PV), 
+						by = "grp_CAGR") %>% 
+	select(grp_CAGR, ERC_PV_baseline, everything(), -baseline) %>% 
+	gather(policy, value, -grp_CAGR) %>% 
 	# mutate(policy = factor(policy, levels = c("ERC_PV_baseline", runnames_show1),
 	# 											         labels = c("PV employer cost\nin Baseline", runnames_show1_labels)),
 	# 											 ) %>% 
 	spread(policy, value) %>% 
-	mutate(Return_Range = grp_CAGR40_labels) %>% 
-	select(grp_CAGR40, Return_Range, everything())
+	mutate(Return_Range = df_CAGR40$cutoff) %>% 
+	select(grp_CAGR, Return_Range, everything())
 	# filter(grp_CAGR40 %in% c(1, 3, 5)) %>% 
 	
 # Table: no calibration + smoothed
 tab_ERC_PV1 <- 
 	df_tab_ERC_PV %>% 
-	select(grp_CAGR40, Return_Range, ERC_PV_baseline, one_of(runnames_cost1)) %>% 
-  gather(policy, value, -grp_CAGR40, -Return_Range) %>% 
+	select(grp_CAGR, Return_Range, ERC_PV_baseline, one_of(runnames_cost1)) %>% 
+  gather(policy, value, -grp_CAGR, -Return_Range) %>% 
 	mutate(policy = factor(policy, levels = c("ERC_PV_baseline", runnames_cost1),
 												         labels = c("PV employer cost\nin Baseline", runnames_cost1_labels)),
 												 ) %>%
@@ -758,15 +793,15 @@ tab_ERC_PV1 <-
 	align(j = 1:2, align = "center", part = "all")  %>% 
 	colformat_num(j = 4:9, digits = 1, suffix = "%") %>% 
 	colformat_num(j = 3, digits = 1) %>% 
-	set_header_labels(grp_CAGR40 = "Return\nquintile", 
+	set_header_labels(grp_CAGR = "Return\nquintile", 
 										Return_Range = "Range of 40-year\ncompound return")
 tab_ERC_PV1
 
 # Calibrated
 tab_ERC_PV2 <- 
 	df_tab_ERC_PV %>% 
-	select(grp_CAGR40, Return_Range, ERC_PV_baseline, one_of(runnames_cost2)) %>% 
-  gather(policy, value, -grp_CAGR40, -Return_Range) %>% 
+	select(grp_CAGR, Return_Range, ERC_PV_baseline, one_of(runnames_cost2)) %>% 
+  gather(policy, value, -grp_CAGR, -Return_Range) %>% 
 	mutate(policy = factor(policy, levels = c("ERC_PV_baseline", runnames_cost2),
 												         labels = c("PV employer cost\nin Baseline", runnames_cost2_labels)),
 												 ) %>%
@@ -793,7 +828,7 @@ tab_ERC_PV2 <-
 	align(j = 1:2, align = "center", part = "all")  %>% 
 	colformat_num(j = 4:ncol_tab, digits = 1, suffix = "%") %>% 
 	colformat_num(j = 3, digits = 1) %>% 
-	set_header_labels(grp_CAGR40 = "Return\nquintile", 
+	set_header_labels(grp_CAGR = "Return\nquintile", 
 										Return_Range = "Range of 40-year\ncompound return")
 
 tab_ERC_PV2
@@ -818,23 +853,27 @@ tab_ERC_PV2
 ```{r tab_ERC_PV, echo = FALSE}
 
 
-get_pvERC_tbl <- function(df_PVC, span = NULL  ){
+get_pvERC_tbl <- function(df_PVC, span = NULL){
 
 	
-	if(is.null(span)) span <- as.character(substitute(df_PVC)) %>% str_extract("\\d+")
+	# if(is.null(span)) span <- as.character(substitute(df_PVC)) %>% str_extract("\\d+")
 	# select the df_PVC to use
-	# df_PVC <- df_PVC_30y
+	# df_PVC <- df_PVC_15y
+	# span = 15
+	
+	df_CAGR <- get_CAGR(results_all, span)
+	
 	
 	runnames_pvERC_tbl <- c(
 		baseline                 = "Baseline",
 		
-		cola_returnSmooth_calib  = "Contingent COLA:\n5-year Return",
-		cola_FR_calib            = "Contingent COLA:\nFunded ratio",
+		cola_returnSmooth_calib  = "Contingent COLA:\n5-year return",
+		cola_FR_calib            = "Contingent COLA:\nfunded ratio",
 		
-		EEC_returnSmooth         = "Contingent EEC:\n5-year Return",
-		EEC_FR                   = "Contingent EEC:\nFunded ratio",
+		EEC_returnSmooth         = "Contingent EEC:\n5-year return",
+		EEC_FR                   = "Contingent EEC:\nfunded ratio",
 		
-		hybrid_DB                = "Hybrid DB-DC",
+		hybrid_DB                = "Hybrid \nDB-DC",
 		mixed_WRS                = "WRS-like",
 		cola_SDRS                = "SDRS-like",
 		DA                       = "Conditional \nindexation"
@@ -855,7 +894,7 @@ df_PVC %>%
 	mutate(Percentile = names(ptiles_measure),
 				 var = "ERC_PV") %>%
 	select(var, Percentile, sim_rank, everything(), -sim) #sim_rank)
-df_PVC_ptiles
+#df_PVC_ptiles
 
 
 # Diff PV costs by quintile
@@ -863,48 +902,63 @@ df_PVC_quintiles <-
 	df_PVC %>% 
 	select(runname, sim, ERC_PV) %>% 
 	left_join(filter(df_PVC, runname == "baseline") %>% ungroup %>% select(sim, ERC_PV_baseline = ERC_PV), by = "sim" ) %>% 
-  left_join(df_CAGR40, by = "sim") %>% 
+  left_join(df_CAGR$df, by = "sim") %>% 
 	mutate(ERC_PV          = 100 * ERC_PV / df_PVC_ptiles$baseline[df_PVC_ptiles$Percentile == "ptile50"],
 				 ERC_PV_baseline = 100 * ERC_PV_baseline / df_PVC_ptiles$baseline[df_PVC_ptiles$Percentile == "ptile50"],
 		     ERC_PV_diff     = ERC_PV - ERC_PV_baseline,
 				 ERC_PV_diff_pct = 100*( ERC_PV / ERC_PV_baseline - 1)
 				 ) %>% 
-	group_by(runname, grp_CAGR40) %>% 
+	group_by(runname, grp_CAGR) %>% 
 	summarise(ERC_PV          = fun_sum(ERC_PV),
 						ERC_PV_diff     = fun_sum(ERC_PV_diff),
 						ERC_PV_diff_pct = fun_sum(ERC_PV_diff_pct)
 						) %>% 
-  arrange(runname, desc(grp_CAGR40))
+  arrange(runname, desc(grp_CAGR))
 
+
+# x <- 
+# df_PVC %>% 
+# 	select(runname, sim, ERC_PV) %>% 
+# 	left_join(filter(df_PVC, runname == "baseline") %>% ungroup %>% select(sim, ERC_PV_baseline = ERC_PV), by = "sim" ) %>% 
+#   left_join(df_CAGR, by = "sim") %>% 
+# 	mutate(ERC_PV          = 100 * ERC_PV          / df_PVC_ptiles$baseline[df_PVC_ptiles$Percentile == "ptile50"],
+# 				 ERC_PV_baseline = 100 * ERC_PV_baseline / df_PVC_ptiles$baseline[df_PVC_ptiles$Percentile == "ptile50"])
+# 
+# x %>% 
+# 	filter(grp_CAGR == 1, runname == "baseline") %>% 
+# 	summarise(pvc_p50 = quantile(ERC_PV, 0.5),)
+# 
+# 
+# df_PVC
 
 # Data for making tables
 df_tab_ERC_PV <- 
 df_PVC_quintiles %>% 
-	select(runname, grp_CAGR40 , ERC_PV_diff_pct) %>% 
+	select(runname, grp_CAGR , ERC_PV_diff_pct) %>% 
 	spread(runname, ERC_PV_diff_pct) %>% 
-	# select(grp_CAGR40, one_of(runnames_show1)) %>% 
+	# select(grp_CAGR, one_of(runnames_show1)) %>% 
 	left_join(df_PVC_quintiles %>%  # adding median baseline PV ERC in each group
 							filter(runname == "baseline") %>% 
 							ungroup() %>% 
-							select(grp_CAGR40, ERC_PV_baseline = ERC_PV), 
-						by = "grp_CAGR40") %>% 
-	select(grp_CAGR40, ERC_PV_baseline, everything(), -baseline) %>% 
-	gather(policy, value, -grp_CAGR40) %>% 
+							select(grp_CAGR, ERC_PV_baseline = ERC_PV), 
+						by = "grp_CAGR") %>% 
+	select(grp_CAGR, ERC_PV_baseline, everything(), -baseline) %>% 
+	gather(policy, value, -grp_CAGR) %>% 
 	# mutate(policy = factor(policy, levels = c("ERC_PV_baseline", runnames_show1),
 	# 											         labels = c("PV employer cost\nin Baseline", runnames_show1_labels)),
 	# 											 ) %>% 
 	spread(policy, value) %>% 
-	mutate(Return_Range = grp_CAGR40_labels) %>% 
-	select(grp_CAGR40, Return_Range, everything())
-	# filter(grp_CAGR40 %in% c(1, 3, 5)) %>% 
+	mutate(Return_Range = df_CAGR$cutoff) %>% 
+	select(grp_CAGR, Return_Range, everything())
+	# filter(grp_CAGR %in% c(1, 3, 5)) %>% 
 
 
 tab_pvERC <- 
 	df_tab_ERC_PV %>% 
-	select(grp_CAGR40, Return_Range, ERC_PV_baseline, one_of(names(runnames_pvERC_tbl))) %>% 
-  gather(policy, value, -grp_CAGR40, -Return_Range) %>% 
-	mutate(policy = factor(policy, levels = c("ERC_PV_baseline", runnames_cost2),
-												         labels = c("PV employer cost\nin Baseline", runnames_cost2_labels)),
+	select(grp_CAGR, Return_Range, ERC_PV_baseline, one_of(names(runnames_pvERC_tbl))) %>% 
+  gather(policy, value, -grp_CAGR, -Return_Range) %>% 
+	mutate(policy = factor(policy, levels = c("ERC_PV_baseline", 	names(runnames_pvERC_tbl) ),
+												         labels = c("PV employer cost\nin Baseline", 	runnames_pvERC_tbl)),
 												 ) %>%
 	spread(policy, value)
 ncol_tab <- ncol(tab_pvERC)
@@ -928,20 +982,27 @@ tab_pvERC %<>%
 	align(j = 1:2, align = "center", part = "all")  %>% 
 	colformat_num(j = 4:ncol_tab, digits = 1, suffix = "%") %>% 
 	colformat_num(j = 3, digits = 1) %>% 
-	set_header_labels(grp_CAGR40 = "Return\nquintile", 
+	set_header_labels(grp_CAGR = "Return\nquintile", 
 										Return_Range = "Range of 40-year\ncompound return")
 
 tab_pvERC
 }
 
 
-tbl_pvERC_y15 <- get_pvERC_tbl(df_PVC_15y)
-tbl_pvERC_y30 <- get_pvERC_tbl(df_PVC_30y)
-# tbl_pvERC_y40 <- get_pvERC_tbl(df_PVC_40y)
+tbl_pvERC_y15 <- get_pvERC_tbl(df_PVC_15y, 15)
+tbl_pvERC_y30 <- get_pvERC_tbl(df_PVC_30y, 30)
+tbl_pvERC_y80 <- get_pvERC_tbl(df_PVC_80y, 80)
 
 
 tbl_pvERC_y15
 tbl_pvERC_y30
+tbl_pvERC_y80
+
+save_as_image(tbl_pvERC_y15, path = paste0(dir_outputs, "tbl_pvERC_y15.png"))
+save_as_image(tbl_pvERC_y30, path = paste0(dir_outputs, "tbl_pvERC_y30.png"))
+
+
+
 
 # Issue:
 # 1. conditional indexation 15-year: greater cost reduction in higher return groups 
@@ -967,13 +1028,13 @@ fun_sum <- median
 # fun_sum <- mean
 
 df_tab_ERC_vol1 <- 
-df_ERCMaxChg %>% 
+df_ERCMaxChg_40y$ERCMaxChg %>% 
 	select(runname, sim, ERC_PR_chg5yMax) %>% 
 	mutate(ERC_PR_chg5yMax = 100 * ERC_PR_chg5yMax) %>% 
-	left_join(df_CAGR40, by = "sim") %>% 
-	group_by(runname, grp_CAGR40) %>% 
+	left_join(df_CAGR40$df, by = "sim") %>% 
+	group_by(runname, grp_CAGR) %>% 
 	summarise(ERC_PR_chg5yMax_med = fun_sum(ERC_PR_chg5yMax)) %>% 
-  arrange(runname, desc(grp_CAGR40)) %>% 
+  arrange(runname, desc(grp_CAGR)) %>% 
 	#filter(runname %in% runnames_show1) %>% 
 	spread(runname, ERC_PR_chg5yMax_med) %>% 
 	# kable(digits = 1, caption = "Max 5-year ERC change in 40-year CAGR groups, starting FR=75%", format = 'pandoc')
@@ -982,14 +1043,14 @@ df_ERCMaxChg %>%
 	# 											         labels = c(runnames_show1_labels)),
 	# 											 ) %>% 
 	# spread(policy, value) %>% 
-	mutate(Return_Range = grp_CAGR40_labels) %>% 
-	select(grp_CAGR40, Return_Range, everything()) 
+	mutate(Return_Range = df_CAGR40$cutoff) %>% 
+	select(grp_CAGR, Return_Range, everything()) 
 
 
 tab_ERC_vol1 <- 
   df_tab_ERC_vol1 %>% 
 	# filter(grp_CAGR40 %in% c(1, 3, 5)) %>% 
-	gather(policy, value, -grp_CAGR40, -Return_Range) %>% 
+	gather(policy, value, -grp_CAGR, -Return_Range) %>% 
 	filter(policy %in% runnames_cost1) %>% 
 	mutate(policy = factor(policy, levels = c(runnames_cost1),
 												         labels = c(runnames_cost1_labels)),
@@ -1008,7 +1069,7 @@ tab_ERC_vol1 <-
 	fontsize(size = 18, part = "header", i = 1) %>% 
 	width(j = 1, width = 0.8) %>%
 	width(j = 2, width = 1.8) %>%
-	set_header_labels(grp_CAGR40 = "Return\nquintile", 
+	set_header_labels(grp_CAGR = "Return\nquintile", 
 										Return_Range = "Range of 40-year\ncompound return") %>% 
 	align(j = 1:2, align = "center", part = "all")  %>% 
 	width(j = 3:9, width = 1.4) %>% 
@@ -1021,7 +1082,7 @@ tab_ERC_vol1
 tab_ERC_vol1_calib <- 
   df_tab_ERC_vol1 %>% 
 	# filter(grp_CAGR40 %in% c(1, 3, 5)) %>% 
-	gather(policy, value, -grp_CAGR40, -Return_Range) %>% 
+	gather(policy, value, -grp_CAGR, -Return_Range) %>% 
 	filter(policy %in% runnames_cost2) %>% 
 	mutate(policy = factor(policy, levels = c(runnames_cost2),
 												         labels = c(runnames_cost2_labels)),
@@ -1044,7 +1105,7 @@ tab_ERC_vol1_calib <-
 	fontsize(size = 18, part = "header", i = 1) %>% 
 	width(j = 1, width = 0.8) %>%
 	width(j = 2, width = 1.8) %>%
-	set_header_labels(grp_CAGR40 = "Return\nquintile", 
+	set_header_labels(grp_CAGR = "Return\nquintile", 
 										Return_Range = "Range of 40-year\ncompound return") %>% 
 	align(j = 1:2, align = "center", part = "all")  %>% 
 	width(j = 3:ncol_tab, width = 1.4) %>% 
@@ -1057,91 +1118,110 @@ tab_ERC_vol1_calib
 
 ```
 
-## Probability of cost hike
 
-```{r tab_ERC_vol2, echo = FALSE}
+## Volatility by quintile: guidebook
 
-df_ERC_hike <-  
-  results_stch %>% 
-	as_tibble() %>% 
-	select(runname, sim, year, ERC_PR) %>% 
-	group_by(runname, sim) %>% 
-	mutate(ERC_hike = cumany( ERC_PR - lag(ERC_PR, 5, Inf) > 0.1) ) %>% 
-	group_by(runname, year) %>% 
-	summarise(ERC_hike = sum(ERC_hike)/n())
+```{r tab_ERC_vol1, echo = FALSE}
 
 
-tab_ERC_vol2 <- 
-df_ERC_hike %>% 
-	filter(runname %in% runnames_cost1, year %in% c(10, 20)) %>% 
-	spread(runname, ERC_hike) %>% 
-	# kable(digits = 2, caption = "Probability of ERC rate rising more than 10% \nwithin a 5-year period in the first 10 or 20 years", format = "pandoc")
-	gather(policy, value, -year) %>% 
+get_ERCvol_tbl <- function(df, span = NULL){
+  
 	
-  mutate(policy = factor(policy, levels = c(runnames_cost1),
-												         labels = c(runnames_cost1_labels)),
-				 value = value * 100) %>% 
-	spread(policy, value) %>% 
+	# df <- df_ERCMaxChg_30y$ERCMaxChg
+	# span = 30
+	 
+	df_CAGR <- get_CAGR(results_all, span)
 	
+	
+	runnames_pvERC_tbl <- c(
+		baseline                 = "Baseline",
+		
+		cola_returnSmooth_calib  = "Contingent COLA:\n5-year return",
+		cola_FR_calib            = "Contingent COLA:\nfunded ratio",
+		
+		EEC_returnSmooth         = "Contingent EEC:\n5-year return",
+		EEC_FR                   = "Contingent EEC:\nfunded ratio",
+		
+		hybrid_DB                = "Hybrid \nDB-DC",
+		mixed_WRS                = "WRS-like",
+		cola_SDRS                = "SDRS-like",
+		DA                       = "Conditional \nindexation"
+	)
+
+fun_sum <- median
+# fun_sum <- mean
+
+df_tab_ERC_vol <- 
+  df %>% 
+	select(runname, sim, ERC_PR_chg5yMax) %>% 
+	mutate(ERC_PR_chg5yMax = 100 * ERC_PR_chg5yMax) %>% 
+	left_join(df_CAGR$df, by = "sim") %>% 
+	group_by(runname, grp_CAGR) %>% 
+	summarise(ERC_PR_chg5yMax_med = fun_sum(ERC_PR_chg5yMax)) %>% 
+  arrange(runname, desc(grp_CAGR)) %>% 
+	#filter(runname %in% runnames_show1) %>% 
+	spread(runname, ERC_PR_chg5yMax_med) %>% 
+	# kable(digits = 1, caption = "Max 5-year ERC change in 40-year CAGR groups, starting FR=75%", format = 'pandoc')
+	# gather(policy, value, -grp_CAGR40) %>% 
+	# mutate(policy = factor(policy, levels = c(runnames_show1),
+	# 											         labels = c(runnames_show1_labels)),
+	# 											 ) %>% 
+	# spread(policy, value) %>% 
+	mutate(Return_Range = df_CAGR$cutoff) %>% 
+	select(grp_CAGR, Return_Range, everything()) 
+
+
+tab_ERC_vol <- 
+  df_tab_ERC_vol %>% 
+	# filter(grp_CAGR40 %in% c(1, 3, 5)) %>% 
+	gather(policy, value, -grp_CAGR, -Return_Range) %>% 
+	filter(policy %in% names(runnames_pvERC_tbl)) %>% 
+	mutate(policy = factor(policy, levels = c(names(runnames_pvERC_tbl)),
+												         labels = c(runnames_pvERC_tbl)),
+												 ) %>%
+	spread(policy, value)
+	
+	
+	ncol_tab <- ncol(tab_ERC_vol)
+	
+	tab_ERC_vol %<>% 
 	flextable() %>%
-	add_header_row(values = "Probability of employer contribution rate rising more than 10% \nwithin a 5-year period in the first 10 or 20 years", 
-								 colwidths = 8) %>% 
+	add_header_lines(values = paste0("Maximum increase in employer contribution rate in 5 years by long-term return quintile\n", span, "-year period\n(Median values within groups)")) %>% 
 	# autofit() %>% 
 	height(part = "body",   height = .6) %>%
-	height(part = "header", i = 1, height = .8) %>%
 	height(part = "header", i = 2, height = 1) %>%
+	height(part = "header", i = 1, height = 1) %>%
 	hrule(rule = "exact", part = "all") %>%
 	bg(part = "header", i = 2, bg = "gray90") %>% 
-	width(j = 1, width = 0.8) %>%
-	width(j = 2:8, width = 1.4) %>%
 	fontsize(size = 14, part = "all") %>% 
 	fontsize(size = 18, part = "header", i = 1) %>% 
-	# autofit(add_w = 1) %>% 
-	align(j = 1, align = "center", part = "all")  %>% 
-	colformat_num(j = 2:8, digits = 1, suffix = "%") %>% 
-	set_header_labels(year = "Up to year"
-									   )
-tab_ERC_vol2
-#save_as_image(tab_ERC_vol2, path = here::here("Outputs_Analysis/tab_ERC_vol2.png"))
-
-
-tab_ERC_vol2_calib <- 
-df_ERC_hike %>% 
-	filter(runname %in% runnames_cost2, year %in% c(10, 20)) %>% 
-	spread(runname, ERC_hike) %>% 
-	# kable(digits = 2, caption = "Probability of ERC rate rising more than 10% \nwithin a 5-year period in the first 10 or 20 years", format = "pandoc")
-	gather(policy, value, -year) %>% 
-	
-  mutate(policy = factor(policy, levels = c(runnames_cost2),
-												         labels = c(runnames_cost2_labels)),
-				 value = value * 100) %>% 
-	spread(policy, value) 
-	
-	ncol_tab <- ncol(tab_ERC_vol2_calib)
-	
-	tab_ERC_vol2_calib %>% 
-	flextable() %>%
-	add_header_row(values = "Probability of employer contribution rate rising more than 10% \nwithin a 5-year period in the first 10 or 20 years", 
-								 colwidths = ncol_tab) %>% 
-	# autofit() %>% 
-	height(part = "body",   height = .6) %>%
-	height(part = "header", i = 1, height = .8) %>%
-	height(part = "header", i = 2, height = 1) %>%
-	hrule(rule = "exact", part = "all") %>%
-	bg(part = "header", i = 2, bg = "gray90") %>% 
 	width(j = 1, width = 0.8) %>%
-	width(j = 2:ncol_tab, width = 1.4) %>%
-	fontsize(size = 14, part = "all") %>% 
-	fontsize(size = 18, part = "header", i = 1) %>% 
-	# autofit(add_w = 1) %>% 
-	align(j = 1, align = "center", part = "all")  %>% 
-	colformat_num(j = 2:ncol_tab, digits = 1, suffix = "%") %>% 
-	set_header_labels(year = "Up to year"
-									   )
-tab_ERC_vol2_calib
+	width(j = 2, width = 1.8) %>%
+	set_header_labels(grp_CAGR = "Return\nquintile", 
+										Return_Range = paste0("Range of ", span, "-year\ncompound return")) %>% 
+	align(j = 1:2, align = "center", part = "all")  %>% 
+	width(j = 3:ncol_tab, width = 1.5) %>% 
+	colformat_num(j = 3:ncol_tab, digits = 1, suffix = "%") 
 
-	
+tab_ERC_vol
+
+}
+
+
+tbl_ERCvol_y15 <- get_ERCvol_tbl(df_ERCMaxChg_15y$ERCMaxChg, 15)
+tbl_ERCvol_y30 <- get_ERCvol_tbl(df_ERCMaxChg_30y$ERCMaxChg, 30)
+#tbl_ERCvol_y80 <- get_ERCvol_tbl(df_ERCMaxChg_30y$ERCMaxChg, 80)
+
+tbl_ERCvol_y15
+tbl_ERCvol_y30
+#tbl_ERCvol_y80
+
+save_as_image(tbl_ERCvol_y15, path = paste0(dir_outputs, "tbl_ERCvol_y15.png"))
+save_as_image(tbl_ERCvol_y30, path = paste0(dir_outputs, "tbl_ERCvol_y30.png"))
+
+
 ```
+
 
 
 

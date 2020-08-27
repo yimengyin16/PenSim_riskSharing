@@ -1290,7 +1290,8 @@ penSim_results <-
 				 C_std   = C / C[year == 1],
 				 ERC_PR  = ERC/ salary,
 				 EEC_PR  = EEC/ salary,
-				 NC_PR   = NC / salary
+				 NC_PR   = NC / salary,
+				 PR      = salary
 				 ) %>% 
 	select(runname, cola_type, sim, year, AL, MA, FR_MA, ERC_PR,EEC_PR, NC_PR, AL_std, B_std, C_std, # DC_MA, 
 				 everything()) %>% 

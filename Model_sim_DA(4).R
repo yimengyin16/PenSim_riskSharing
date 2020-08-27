@@ -652,11 +652,15 @@ bind_rows(penSim_results) %>%
 				 return_scn  = return_scn,
 				 sim     = rep(-2:nsim, each = nyear)) %>% 
 	group_by(sim) %>% 
-	mutate(C_PR    = 100 * C / PR,
+	mutate(C_PR    = C / PR,
 				 NC_PR   = NC / PR,
+				 EEC_PR  = EEC / PR,
+				 ERC_PR  = ERC / PR,
 				 AL      = AL_fullIdx,
 				 FR_MA   = FR_fullIdx,
-				 cola_actual = ben_idx
+				 UAAL    = UAAL_fullIdx,
+				 cola_actual = ben_idx,
+				 salary  = PR
 				 ) %>% 
 	relocate(runname, sim, year)
 
