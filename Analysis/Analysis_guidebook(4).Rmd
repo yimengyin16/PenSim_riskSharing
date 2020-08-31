@@ -981,7 +981,7 @@ df_PVC_quintiles %>%
 	# filter(grp_CAGR %in% c(1, 3, 5)) %>% 
 
 
-tab_pvERC <- 
+df_tab_pvERC <- 
 	df_tab_ERC_PV %>% 
 	select(grp_CAGR, Return_Range, ERC_PV_baseline, one_of(names(runnames_pvERC_tbl))) %>% 
   gather(policy, value, -grp_CAGR, -Return_Range) %>% 
@@ -989,9 +989,10 @@ tab_pvERC <-
 												         labels = c("PV employer cost\nin Baseline", 	runnames_pvERC_tbl)),
 												 ) %>%
 	spread(policy, value)
-ncol_tab <- ncol(tab_pvERC)
+ncol_tab <- ncol(df_tab_pvERC)
 
-tab_pvERC %<>% 
+tab_pvERC <- 
+  df_tab_pvERC %>% 
 	flextable() %>%
 	add_header_row(values = paste0("Percentage differences in ", span, "-year PV employer contribution\n from baseline by long-term return quintile\n(Median values within groups)"), 
 								 colwidths = ncol_tab) %>% 
@@ -1013,7 +1014,9 @@ tab_pvERC %<>%
 	set_header_labels(grp_CAGR = "Return\nquintile", 
 										Return_Range = paste0("Range of ", span, "-year\ncompound return"))
 
-tab_pvERC
+list(df  = df_tab_pvERC,
+		 tbl = tab_pvERC)
+
 }
 
 
@@ -1022,13 +1025,16 @@ tbl_pvERC_y30 <- get_pvERC_tbl(df_PVC_30y, 30)
 # tbl_pvERC_y80 <- get_pvERC_tbl(df_PVC_80y, 80)
 
 
-tbl_pvERC_y15
-tbl_pvERC_y30
-tbl_pvERC_y80
+tbl_pvERC_y15$tbl
+tbl_pvERC_y30$tbl
+#tbl_pvERC_y80
 
-save_as_image(tbl_pvERC_y15, path = paste0(dir_outputs, "tbl_pvERC_y15.png"))
-save_as_image(tbl_pvERC_y30, path = paste0(dir_outputs, "tbl_pvERC_y30.png"))
+save_as_image(tbl_pvERC_y15$tbl, path = paste0(dir_outputs, "tbl_pvERC_y15.png"))
+save_as_image(tbl_pvERC_y30$tbl, path = paste0(dir_outputs, "tbl_pvERC_y30.png"))
 
+
+xlsx::write.xlsx2(tbl_pvERC_y15$df, file = paste0(dir_outputs, "tbl_pvERC.xlsx"), sheetName = "pvERC_15y")
+xlsx::write.xlsx2(tbl_pvERC_y30$df, file = paste0(dir_outputs, "tbl_pvERC.xlsx"), sheetName = "pvERC_30y", append = TRUE)
 
 
 
@@ -1199,7 +1205,7 @@ df_tab_ERC_vol <-
 	select(grp_CAGR, Return_Range, everything()) 
 
 
-tab_ERC_vol <- 
+df_tab_ERC_vol <- 
   df_tab_ERC_vol %>% 
 	# filter(grp_CAGR40 %in% c(1, 3, 5)) %>% 
 	gather(policy, value, -grp_CAGR, -Return_Range) %>% 
@@ -1210,9 +1216,10 @@ tab_ERC_vol <-
 	spread(policy, value)
 	
 	
-	ncol_tab <- ncol(tab_ERC_vol)
+	ncol_tab <- ncol(df_tab_ERC_vol)
 	
-	tab_ERC_vol %<>% 
+	tab_ERC_vol <-  
+	df_tab_ERC_vol%>% 
 	flextable() %>%
 	add_header_lines(values = paste0("Maximum increase in employer contribution rate in 5 years by long-term return quintile\n", span, "-year period\n(Median values within groups)")) %>% 
 	# autofit() %>% 
@@ -1231,8 +1238,11 @@ tab_ERC_vol <-
 	width(j = 3:ncol_tab, width = 1.5) %>% 
 	colformat_num(j = 3:ncol_tab, digits = 1, suffix = "%") 
 
-tab_ERC_vol
-
+# tab_ERC_vol
+  list(df  = df_tab_ERC_vol,
+  		 tbl = tab_ERC_vol)
+	
+	
 }
 
 
@@ -1240,12 +1250,17 @@ tbl_ERCvol_y15 <- get_ERCvol_tbl(df_ERCMaxChg_15y$ERCMaxChg, 15)
 tbl_ERCvol_y30 <- get_ERCvol_tbl(df_ERCMaxChg_30y$ERCMaxChg, 30)
 #tbl_ERCvol_y80 <- get_ERCvol_tbl(df_ERCMaxChg_30y$ERCMaxChg, 80)
 
-tbl_ERCvol_y15
-tbl_ERCvol_y30
+tbl_ERCvol_y15$tbl
+tbl_ERCvol_y30$tbl
 #tbl_ERCvol_y80
 
-save_as_image(tbl_ERCvol_y15, path = paste0(dir_outputs, "tbl_ERCvol_y15.png"))
-save_as_image(tbl_ERCvol_y30, path = paste0(dir_outputs, "tbl_ERCvol_y30.png"))
+save_as_image(tbl_ERCvol_y15$tbl, path = paste0(dir_outputs, "tbl_ERCvol_y15.png"))
+save_as_image(tbl_ERCvol_y30$tbl, path = paste0(dir_outputs, "tbl_ERCvol_y30.png"))
+
+
+xlsx::write.xlsx2(tbl_ERCvol_y15$df, file = paste0(dir_outputs, "tbl_ERCvol.xlsx"), sheetName = "ERCvol_15y")
+xlsx::write.xlsx2(tbl_ERCvol_y30$df, file = paste0(dir_outputs, "tbl_ERCvol.xlsx"), sheetName = "ERCvol_30y", append = TRUE)
+
 
 
 ```
