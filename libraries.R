@@ -101,7 +101,7 @@ get_nyearMin <- function(x) min(x[-1] - x[1])
 					plot.subtitle=element_text(hjust=0.5),
 					plot.caption=element_text(hjust=0, size = 9),
 					
-					panel.background = element_rect(fill = "grey98",
+					panel.background = element_rect(fill   = "grey98",
 																					colour = "grey98",
 																					size = 0.5, linetype = "solid")
 					

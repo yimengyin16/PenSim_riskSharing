@@ -91,7 +91,7 @@ for(runName in runList$runname ){
 
 
 	if (paramlist$policy_type == "DA") {
-		source("Model_sim_DA(4).R")
+		source("Model_sim_DA(5).R")
 	} else {
 		source("Model_sim_DB(7).R")
 	}

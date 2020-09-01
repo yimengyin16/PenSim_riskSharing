@@ -20,7 +20,8 @@ run_labels_FR75 <- c(
 	EEC_sharedADC      = "Contingent EEC: \nShared ADC 0 floor",
 	hybrid_DB          = "hybrid_DB",
 	mixed_WRS          = "WRS-like",
-	DA                 = "conditional indexation"
+	DA                 = "conditional indexation",
+	DA_as                 = "conditional indexation\n A.smoothing"
 	# EEC_sharedNC  = "Contingent EEC: \nshared",
 )
 

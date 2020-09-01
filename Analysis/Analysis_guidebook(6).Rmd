@@ -26,18 +26,12 @@ dir_outputs      <- paste0(here::here(),"/Analysis/figTbl_guidebook/")
 # Global parameters for analysis
 dr     <- 0.075 # discount rate
 dr_low <- 0.03  # lower discount rate
-infl  <- 0.02  # assumed inflation rate
-Nyear <- 40    # Number of sim years for contribution analysis
+infl   <- 0.02  # assumed inflation rate
+# Nyear  <- 40    # Number of sim years for contribution analysis
 cola_baseline <- 0.015
 
 DC_EECrate <- 0.025
 DC_ERCrate <- 0.028
-
-# run names for policy runs to show in results
-# policy_select <- c("baseline", 
-# 									 "cola_return", "cola_returnSmooth", "cola_returnSmooth_calib",  
-# 									 "cola_FR", "cola_FR_calib",  
-# 									 "EEC_sharedADCfloor", "EEC_return", "EEC_returnSmooth", "EEC_FR", "hybrid_DB")
 
 
 runnames_show_calib_labels <- c(
@@ -56,17 +50,18 @@ runnames_show_calib_labels <- c(
 	EEC_returnSmooth   = "Contingent EEC:\nReturn smoothed",
 	EEC_FR             = "Contingent EEC:\nFunded ratio",
 	
-	hybrid_DB = "hybrid DB-DC",
+	hybrid_DB          = "hybrid DB-DC",
 
 	EEC_sharedADCfloor = "shared ADC\n 5% floor", #
 	EEC_sharedADC      = "shared ADC\n no floor", #
 	
-	mixed_WRS = "WRS-like",
-	cola_SDRS = "SDRS-like",
+	mixed_WRS          = "WRS-like",
+	cola_SDRS          = "SDRS-like",
 	
-	cola_SDRS_noCAeec = "SDRS-like\nno CA EEC", #
+	cola_SDRS_noCAeec  = "SDRS-like\nno CA EEC",  #
 	
-	DA        = "conditional \nindexation"
+	DA                 = "conditional \nindexation",
+	DA_as              = "conditional \nindexation\nasset_smoothing"
 )
 runnames_show_calib <- names(runnames_show_calib_labels)
 
@@ -87,26 +82,26 @@ runnames_cost1 <- names(runnames_cost1_labels)
 
 
 runnames_cost2_labels <- c(
-	baseline           = "Baseline",
+	baseline                 = "Baseline",
 
 	cola_returnSmooth_calib  = "Contingent \nCOLA:\nReturn smoothed \ncalib",
 	cola_FR_calib            = "Contingent \nCOLA:\nFunded ratio \ncalib",
 
-	EEC_returnSmooth   = "Contingent \nEEC:\nReturn smoothed",
-	EEC_FR             = "Contingent \nEEC:\nFunded ratio",
+	EEC_returnSmooth         = "Contingent \nEEC:\nReturn smoothed",
+	EEC_FR                   = "Contingent \nEEC:\nFunded ratio",
 	
 	
-  hybrid_DB = "hybrid \nDB-DC",
+  hybrid_DB                = "hybrid \nDB-DC",
 	
-	EEC_sharedADCfloor = "shared ADC\n 5% floor", #
-	EEC_sharedADC      = "shared ADC\n no floor", #
+	EEC_sharedADCfloor       = "shared ADC\n 5% floor", #
+	EEC_sharedADC            = "shared ADC\n no floor", #
 	
-	mixed_WRS = "WRS-like",
-	cola_SDRS = "SDRS-like",
+	mixed_WRS                = "WRS-like",
+	cola_SDRS                = "SDRS-like",
 	
-  cola_SDRS_noCAeec = "SDRS-like\nno CA EEC",  #
+  cola_SDRS_noCAeec        = "SDRS-like\nno CA EEC",  #
 	
-	DA        = "conditional \nindexation"
+	DA                       = "conditional \nindexation"
 	
 )
 runnames_cost2 <- names(runnames_cost2_labels)
@@ -126,7 +121,7 @@ runnames_benefit1 <- names(runnames_benefit1_labels)
 
 
 runnames_benefit2_labels <- c(
-	baseline           = "Baseline",
+	baseline                 = "Baseline",
 
 	cola_returnSmooth_calib  = "Contingent COLA: \n return Smoothed \ncalib",
 	cola_FR_calib            = "Contingent COLA: \n Funded ratio\nYear-1 funded ratio 75%\ncalib",
@@ -272,7 +267,7 @@ list(df     = df_CAGR,
 		 cutoff = cutoff)
 }
 
-df_CAGR80 <- get_CAGR(results_all, 80)
+# df_CAGR80 <- get_CAGR(results_all, 80)
 df_CAGR40 <- get_CAGR(results_all, 40)
 df_CAGR30 <- get_CAGR(results_all, 30)
 df_CAGR15 <- get_CAGR(results_all, 15)
@@ -297,9 +292,9 @@ df_CAGR15 <- get_CAGR(results_all, 15)
 
 ```{r ERC_prep, echo = FALSE, warning=FALSE}
 
-results_stch <-  
-  results_all %>% 
-	filter(year <= Nyear) 
+# results_stch <-  
+#   results_all %>% 
+# 	filter(year <= Nyear) 
 
 
 # results_all %>%
@@ -333,10 +328,10 @@ get_PVC <- function(df, span){
 						)
 }
 
-# df_PVC_80y <- get_PVC(results_stch, 80)
-df_PVC_40y <- get_PVC(results_stch, 40)
-df_PVC_30y <- get_PVC(results_stch, 30)
-df_PVC_15y <- get_PVC(results_stch, 15)
+#df_PVC_80y <- get_PVC(results_stch, 80)
+df_PVC_40y <- get_PVC(results_all, 40)
+df_PVC_30y <- get_PVC(results_all, 30)
+df_PVC_15y <- get_PVC(results_all, 15)
 
 ## Percentiles of PVC for each policy
 
@@ -371,37 +366,6 @@ get_PVC_qtiles <- function(df_PVC){
 df_PVC_qtiles_40y <- get_PVC_qtiles(df_PVC_40y)
 df_PVC_qtiles_30y <- get_PVC_qtiles(df_PVC_30y)
 df_PVC_qtiles_15y <- get_PVC_qtiles(df_PVC_15y)
-
-
-# df_ERCMaxChg_30y$ERCMaxChg
-# 
-# 
-# 
-# results_all %>%
-# 	filter(runname %in% c("baseline", "DA"), sim == 12, year <= 40) %>%
-# 	select(runname, sim, year, AL, FR_MA, FR_fullIdx, FR_floorIdx, SC, C,NC_PR, ERC_PR, SC_legacy, cola_actual) %>%
-# 	as_tibble
-# 
-# 
-# df_ERCMaxChg_30y$ERCMaxChg %>% 
-#     filter(runname %in% c("baseline", "DA")) %>% 
-# 	  select(runname, sim, ERC_PR_chg5yMax) %>% 
-# 	  spread(runname, ERC_PR_chg5yMax) %>% 
-# 	  mutate(baselineLarger = baseline > DA) %>% 
-# 	  pull(baselineLarger) %>% sum
-# 
-# df_ERCMaxChg_30y$ERCMaxChg %>% 
-#     filter(runname %in% c("baseline", "DA"), sim == 12) 
-# 
-# # DA reduces max 5-year change compared to baseline only in less than 1/4 sims (<500 sims out of 2,000)
-# 
-# results_all %>%
-# 	filter(runname %in% c("baseline", "DA"), sim == 100, year <= 40) %>%
-# 	select(runname, sim, year, ERC_PR) %>% 
-# 	ggplot(aes(x = year, y = ERC_PR, color = runname)) + 
-# 	geom_line() +
-# 	geom_point()
-
 
 
 # df_PVC_qtiles
@@ -582,10 +546,10 @@ df_PVC_qtiles_y15_plot <-
 	mutate_at(vars(-runname,-runname_wlabel), ~ 100 * . / df_PVC_qtiles_15y$ERC_PV_q50[df_PVC_qtiles_15y$runname == "baseline"]) %>% 
 	select(runname, contains("ERC_PV")) 
    
-df_PVC_qtiles_y80_plot <- 
-  df_PVC_qtiles_80y %>% 
-	mutate_at(vars(-runname,-runname_wlabel), ~ 100 * . / df_PVC_qtiles_80y$ERC_PV_q50[df_PVC_qtiles_80y$runname == "baseline"]) %>% 
-	select(runname, contains("ERC_PV")) 
+# df_PVC_qtiles_y80_plot <- 
+#   df_PVC_qtiles_80y %>% 
+# 	mutate_at(vars(-runname,-runname_wlabel), ~ 100 * . / df_PVC_qtiles_80y$ERC_PV_q50[df_PVC_qtiles_80y$runname == "baseline"]) %>% 
+# 	select(runname, contains("ERC_PV")) 
  
 
 runnames_pvERC <- c(
@@ -600,7 +564,8 @@ runnames_pvERC <- c(
   hybrid_DB                = "Hybrid \nDB-DC",
 	mixed_WRS                = "WRS-like",
 	cola_SDRS                = "SDRS-like",
-	DA                       = "Conditional \nindexation"
+	#DA                       = "Conditional \nindexation\nno AS",
+	DA_as                    = "Conditional \nindexation"
 )
 
 
@@ -681,41 +646,6 @@ save_figure(fig_dist_pvERC_y15_all, dir_outputs, w = 11, h = 7, scale = 0.8)
 # Questions:
 #  1. why hybrid DB-DC has lower median PV ERC
   
-
-# 
-# df_PVC_qtiles_plot <- df_PVC_qtiles_y80_plot 
-# nyear_pvERC <- 80
-# 
-# fig_title    <- paste0("Distributions of the present value of ", nyear_pvERC, "-year employer contributions (ERC) \nunder different risk-sharing policies") 
-#   fig_dist_pvERC_y80_all <- 
-#   df_PVC_qtiles_plot %>% 
-#   filter(runname %in% names(runnames_pvERC)) %>% 
-# 	mutate(runname = factor(runname, levels = names(runnames_pvERC), 
-# 													         labels = runnames_pvERC)) %>% 
-# 	ggplot(aes(x = runname)) + 
-# 	geom_boxplot(width = 0.4,
-# 							 stat = "identity",
-# 							 aes(ymin   = ERC_PV_q10,
-# 							 	 	lower   = ERC_PV_q25,
-# 							 		middle  = ERC_PV_q50,
-# 							 		upper   = ERC_PV_q75,
-# 							 		ymax    = ERC_PV_q90)
-# 	) + 
-# 	geom_hline(yintercept =
-# 						 filter(df_PVC_qtiles_plot, runname == "baseline") %>% pull(ERC_PV_q50),
-# 						 linetype = 2) +
-#   geom_vline(xintercept = c(1.5, 5.5), linetype = 2, color = "grey60") + 	
-#   annotate("text", x = 3.5, y = 175, label = "DB-based risk-sharing policies") + 
-#   annotate("text", x = 7.5, y = 175, label = "More-complex risk-sharing policies")	+
-# 	
-#   coord_cartesian(ylim = c(0, 180)) + 
-# 	scale_y_continuous(breaks = seq(0, 300, 20)) + 
-# 	labs(title = fig_title,
-# 			 subtitle = NULL,# fig_subtitle,
-# 			 x = NULL, 
-# 			 y = "Present value of ERC") 
-#  
-# fig_dist_pvERC_y80_all
 
 
 fig_dist_pvERC_y15_all
@@ -888,9 +818,10 @@ get_pvERC_tbl <- function(df_PVC, span = NULL){
 	# select the df_PVC to use
 	# df_PVC <- df_PVC_15y
 	# span = 15
-	
+
 	df_CAGR <- get_CAGR(results_all, span)
 	
+	df_PVC %<>% filter(sim>=1) 
 	
 	runnames_pvERC_tbl <- c(
 		baseline                 = "Baseline",
@@ -904,13 +835,16 @@ get_pvERC_tbl <- function(df_PVC, span = NULL){
 		hybrid_DB                = "Hybrid \nDB-DC",
 		mixed_WRS                = "WRS-like",
 		cola_SDRS                = "SDRS-like",
-		DA                       = "Conditional \nindexation"
+		#DA                       = "Conditional \nindexation\nno AS",
+		DA_as                    = "Conditional \nindexation"
 	)
 
 	ptiles_measure <- c(ptile90 = 0.9, ptile75 = 0.75, ptile50 = 0.50, ptile25 = 0.25, ptile10 = 0.1)
-  nsim <- filter(df_PVC, runname == "baseline") %>% nrow()
+  nsim <- filter(df_PVC, sim >= 1, runname == "baseline") %>% nrow()
   fun_sum <- median
-
+  
+ 
+  
 # # Percentiles of PV costs
 df_PVC_ptiles <-
 df_PVC %>%
@@ -1022,12 +956,12 @@ list(df  = df_tab_pvERC,
 
 tbl_pvERC_y15 <- get_pvERC_tbl(df_PVC_15y, 15)
 tbl_pvERC_y30 <- get_pvERC_tbl(df_PVC_30y, 30)
-# tbl_pvERC_y80 <- get_pvERC_tbl(df_PVC_80y, 80)
+#tbl_pvERC_y80 <- get_pvERC_tbl(df_PVC_80y, 80)
 
 
 tbl_pvERC_y15$tbl
 tbl_pvERC_y30$tbl
-#tbl_pvERC_y80
+tbl_pvERC_y80$tbl
 
 save_as_image(tbl_pvERC_y15$tbl, path = paste0(dir_outputs, "tbl_pvERC_y15.png"))
 save_as_image(tbl_pvERC_y30$tbl, path = paste0(dir_outputs, "tbl_pvERC_y30.png"))
@@ -1073,21 +1007,26 @@ xlsx::write.xlsx2(tbl_pvERC_y30$df, file = paste0(dir_outputs, "tbl_pvERC.xlsx")
 		hybrid_DB                = "Hybrid \nDB-DC",
 		mixed_WRS                = "WRS-like",
 		cola_SDRS                = "SDRS-like",
-		DA                       = "Conditional \nindexation"
+		# DA                       = "Conditional \nindexation\nnoAS",
+		DA_as                    = "Conditional \nindexation"
 	)
 
 
+ 
 df_PVC_15y %>% 
 	ungroup() %>% 
 	filter(runname %in% names(runnames_pvERC_tbl)) %>% 
 	filter(sim == -2 | sim == 0 & runname =="baseline" ) %>% 
 	mutate(runname = as.character(runname),
 		     runname = ifelse(sim == 0, "baseline_met", runname),
-				 runname = factor(runname, levels = names(runnames_pvERC_tbl))) %>% 
+				 runname = factor(runname, levels = names(runnames_pvERC_tbl)
+				 								 )) %>% 
 	arrange(runname) %>% 
 	mutate(pERC_PV = 100*(ERC_PV/ERC_PV[runname == "baseline_met"] - 1)) %>% 
-	select(runname, sim, runname_wlabel, ERC_PV, pERC_PV) %>% 
-	xlsx::write.xlsx2(file = paste0(dir_outputs, "tbl_pvERC_shock.xlsx"), sheetName = "pvERC_15y")
+	select(runname, sim, runname_wlabel, ERC_PV, pERC_PV)
+
+ 
+xlsx::write.xlsx2(df_pvERC_shock_15y, file = paste0(dir_outputs, "tbl_pvERC_shock.xlsx"), sheetName = "pvERC_15y")
 
 
 
@@ -1221,7 +1160,8 @@ get_ERCvol_tbl <- function(df, span = NULL){
 		hybrid_DB                = "Hybrid \nDB-DC",
 		mixed_WRS                = "WRS-like",
 		cola_SDRS                = "SDRS-like",
-		DA                       = "Conditional \nindexation"
+		#DA                       = "Conditional \nindexation\nno AS",
+		DA_as                    = "Conditional \nindexation"
 	)
 
 fun_sum <- median
