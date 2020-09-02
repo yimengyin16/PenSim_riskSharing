@@ -1012,7 +1012,7 @@ xlsx::write.xlsx2(tbl_pvERC_y30$df, file = paste0(dir_outputs, "tbl_pvERC.xlsx")
 	)
 
 
- 
+ df_pvERC_shock_15y <- 
 df_PVC_15y %>% 
 	ungroup() %>% 
 	filter(runname %in% names(runnames_pvERC_tbl)) %>% 
