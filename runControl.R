@@ -93,19 +93,22 @@ for(runName in runList$runname ){
 	if (paramlist$policy_type == "DA") {
 		source("Model_sim_DA(5).R")
 	} else {
-		source("Model_sim_DB(7).R")
+		source("Model_sim_DB(9).R")
 	}
 
 	outputs_list <- list(paramlist        = paramlist,
 											 Global_paramlist = Global_paramlist,
 											 results          = penSim_results)
 
+	
+	
 	save(outputs_list, file = paste0(dir_Outputs, "Outputs_", runName, ".RData"))
 }
 
-
-
-
-
-
+# 
+# outputs_list$results %>% filter(sim == -2) %>% 
+# 	select(year, cola_actual, i.r_geoReturn_cola, i.r)
+# 
+# outputs_list$results$i.r_geoReturn_cola 
+# 
 
