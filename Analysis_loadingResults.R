@@ -24,7 +24,11 @@ run_labels_FR75 <- c(
 	hybrid_DB          = "hybrid_DB",
 	mixed_WRS          = "WRS-like",
 	DA                 = "conditional indexation\nno assetSmoothing",
-	DA_as              = "conditional indexation"
+	DA_as              = "conditional indexation",
+	DA_as_none         = "conditional indexation \n none",
+	DA_as_act          = "conditional indexation \n actives only",
+	DA_as_ret          = "conditional indexation \n retirees only"
+	
 	# EEC_sharedNC  = "Contingent EEC: \nshared",
 )
 
@@ -47,7 +51,11 @@ run_labels_FR100 <- c(
 	EEC_FR_FR100        = "Contingent EEC: \nFunded ratio\nYear-1 funded ratio 100%",
 	EEC_sharedADCfloor_FR100 = "Contingent EEC: \nShared ADC\nYear-1 funded ratio 100%",
 	hybrid_DB_FR100     = "hybrid_DB\nYear-1 funded ratio 100%",
-	mixed_WRS_FR100     = "WRS-like funded ratio 100%"
+	mixed_WRS_FR100     = "WRS-like funded ratio 100%",
+	DA_as_FR100              = "conditional indexation,  funded ratio 100%",
+	DA_as_none_FR100         = "conditional indexation \n none,  funded ratio 100%",
+	DA_as_act_FR100          = "conditional indexation \n actives only,  funded ratio 100%",
+	DA_as_ret_FR100          = "conditional indexation \n retirees only,  funded ratio 100%"
 	# DA_FR100                  = "conditional indexation \funded ratio 100%"
 	# EEC_sharedNC  = "Contingent EEC: \nshared",
 )

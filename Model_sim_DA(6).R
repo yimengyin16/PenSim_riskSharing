@@ -3,7 +3,7 @@
 #                           ### What's new in version (6)         ####                      
 #*******************************************************************************
 
-
+# Add independent control for indexation for actives and retirees. 
 
 
 
@@ -44,7 +44,7 @@ assign_parmsList(paramlist_,  envir = environment())
 
 # Override param values
 # ncore <- 6
-# nsim  <- 500
+nsim  <- 5
 # smooth_method <- "method2"
 
 
@@ -103,19 +103,19 @@ df_decrements_DA <-
 		
 		# expected benefit for $1 current accrued benefit at ret age (60) assuming full indexation
 		# B1_age2ret_fullIdx = order_by(-age, cumprod(ifelse(age >= age_ret, 1, (1 + idxFull_DA)))),
-		B1_age2ret_fullIdx   = ifelse(age > age_ret, 0, (1 + idxFull_DA)^(age_ret - age)),
+		B1_age2ret_fullIdx   = ifelse(age > age_ret, 0, (1 + idxFull_act_DA)^(age_ret - age)),
 		
 		# expected benefit for $1 starting benefit at ret age (60) assuming full indexation
-		B1_age2death_fullIdx = ifelse(age < age_ret, 0, (1 + idxFull_DA)^(age - age_ret)),
+		B1_age2death_fullIdx = ifelse(age < age_ret, 0, (1 + idxFull_ret_DA)^(age - age_ret)),
 		
 		
 		
 		# expected benefit for $1 current accrued benefit at ret age (60) assuming floor indexation
 		# B1_age2ret_fullIdx = order_by(-age, cumprod(ifelse(age >= age_ret, 1, (1 + idxFull_DA)))),
-		B1_age2ret_floorIdx   = ifelse(age > age_ret, 0, (1 + idxFloor_DA)^(age_ret - age)),
+		B1_age2ret_floorIdx   = ifelse(age > age_ret, 0, (1 + idxFloor_act_DA)^(age_ret - age)),
 		
 		# expected benefit for $1 starting benefit at ret age (60) assuming full indexation
-		B1_age2death_floorIdx = ifelse(age < age_ret, 0, (1 + idxFloor_DA)^(age - age_ret)),
+		B1_age2death_floorIdx = ifelse(age < age_ret, 0, (1 + idxFloor_ret_DA)^(age - age_ret)),
 		
 		
 		
@@ -250,7 +250,7 @@ df_indiv_sim0 %<>%
 		     
 		     # accrued benefit for initial active members
 		     Bx          = ifelse(start_year <= 1 & year == 1 & age < age_ret, yos * bfactor_DA * sx, 0),
-  			 Bx_new      = ifelse(start_year <= 1 & year == 1 & age < age_ret, bfactor_DA * sx * (1 + idxFull_DA), 0),
+  			 Bx_new      = ifelse(start_year <= 1 & year == 1 & age < age_ret, bfactor_DA * sx * (1 + idxFull_act_DA), 0),
 				 # benefit for initial retirees: deleting all benefit values for non-initial members
 				 B           = ifelse(ret_year > 1 | year > 1, 0, B),
 				 
@@ -276,7 +276,10 @@ df_indiv_sim0 %<>%
 # nyear <- max(df_indiv_sim0$year)
 
 ## Create a series of hypothetical benefit indices:
-ben_idx_vec <- rep(0, nyear)
+ben_idx_act_vec <- rep(0, nyear)
+ben_idx_ret_vec <- rep(0, nyear)
+
+
 # ben_idx_vec[c(6:10, 21:25, 36:40)] <- 0
 # ben_idx_vec
 
@@ -353,7 +356,9 @@ df_agg_sim0 <-
 				 I.r        = 0,
 				 I.diff     = 0,
 				 
-				 ben_idx    = 0,
+				 #ben_idx    = 0,
+				 ben_idx_act = 0,
+				 ben_idx_ret = 0,
 				 
 				 SC_legacy  = 0
 				 )
@@ -480,9 +485,18 @@ df_agg_sim$FR_AA_floorIdx[1]   <- with(df_agg_sim, AA[1] / AL_floorIdx[1])
 # 	df_agg_sim$ben_idx[1] <- 
 # 	with(df_agg_sim, min(1, max(0, (MA[1] - AL_floorIdx[1])/(AL_fullIdx[1] - AL_floorIdx[1])))) * (idxFull_DA - idxFloor_DA) + idxFloor_DA
 
-ben_idx_vec[1] <- 
-	df_agg_sim$ben_idx[1] <- 
-	with(df_agg_sim, min(1, max(0, (AA[1] - AL_floorIdx[1])/(AL_fullIdx[1] - AL_floorIdx[1])))) * (idxFull_DA - idxFloor_DA) + idxFloor_DA
+# ben_idx_vec[1] <- 
+# 	df_agg_sim$ben_idx[1] <- 
+# 	with(df_agg_sim, min(1, max(0, (AA[1] - AL_floorIdx[1])/(AL_fullIdx[1] - AL_floorIdx[1])))) * (idxFull_act_DA - idxFloor_act_DA) + idxFloor_act_DA
+
+ben_idx_act_vec[1] <-
+	df_agg_sim$ben_idx_act[1] <-
+	with(df_agg_sim, min(1, max(0, (AA[1] - AL_floorIdx[1])/(AL_fullIdx[1] - AL_floorIdx[1])))) * (idxFull_act_DA - idxFloor_act_DA) + idxFloor_act_DA
+
+ben_idx_ret_vec[1] <-
+	df_agg_sim$ben_idx_ret[1] <-
+	with(df_agg_sim, min(1, max(0, (AA[1] - AL_floorIdx[1])/(AL_fullIdx[1] - AL_floorIdx[1])))) * (idxFull_ret_DA - idxFloor_ret_DA) + idxFloor_ret_DA
+
 
 
 
@@ -516,14 +530,16 @@ for(j in 2:nyear){
 		mutate(
 			     ## Updating accured benefits for active members 
 			     #  all values are for a single member
-			     Bx     = ifelse(year == j & (age-ea) != 0, lag((Bx + sx * bfactor_DA) * (1 + ben_idx_vec[j-1])) , Bx),
-					
+			     #Bx     = ifelse(year == j & (age-ea) != 0, lag((Bx + sx * bfactor_DA) * (1 + ben_idx_vec[j-1])) , Bx),
+			     Bx     = ifelse(year == j & (age-ea) != 0, lag((Bx + sx * bfactor_DA) * (1 + ben_idx_act_vec[j-1])) , Bx),
+			     
+			     
 					 # Determine the starting benefit level upon retirement
 					 # Note that do not need to do this for retirees in year 1 
 					 B = ifelse(year == j & ret_year == j & ret_year > 1, Bx, B),
 					 
 					 # Update benefit with index
-					 B = ifelse(year == j & year > ret_year, lag(B * (1 + ben_idx_vec[j-1])), B),
+					 B = ifelse(year == j & year > ret_year, lag(B * (1 + ben_idx_ret_vec[j-1])), B),
 					 
 					 
 					 # Real liability: assuming full index
@@ -575,10 +591,17 @@ for(j in 2:nyear){
   # 	df_agg_sim$ben_idx[j] <- 
   # 	with(df_agg_sim, min(1, max(0, (MA[j] - AL_floorIdx[j])/(AL_fullIdx[j] - AL_floorIdx[j])))) * (idxFull_DA - idxFloor_DA) + idxFloor_DA
   
-  ben_idx_vec[j] <-  
-  	df_agg_sim$ben_idx[j] <- 
-  	with(df_agg_sim, min(1, max(0, (AA[j] - AL_floorIdx[j])/(AL_fullIdx[j] - AL_floorIdx[j])))) * (idxFull_DA - idxFloor_DA) + idxFloor_DA
+  # ben_idx_vec[j] <-  
+  # 	df_agg_sim$ben_idx[j] <- 
+  # 	with(df_agg_sim, min(1, max(0, (AA[j] - AL_floorIdx[j])/(AL_fullIdx[j] - AL_floorIdx[j])))) * (idxFull_act_DA - idxFloor_act_DA) + idxFloor_act_DA
+ 
+  ben_idx_act_vec[j] <-  
+  	df_agg_sim$ben_idx_act[j] <- 
+  	with(df_agg_sim, min(1, max(0, (AA[j] - AL_floorIdx[j])/(AL_fullIdx[j] - AL_floorIdx[j])))) * (idxFull_act_DA - idxFloor_act_DA) + idxFloor_act_DA
   
+  ben_idx_ret_vec[j] <-  
+  	df_agg_sim$ben_idx_ret[j] <- 
+  	with(df_agg_sim, min(1, max(0, (AA[j] - AL_floorIdx[j])/(AL_fullIdx[j] - AL_floorIdx[j])))) * (idxFull_ret_DA - idxFloor_ret_DA) + idxFloor_ret_DA
   
   # df_agg_sim 
   
@@ -600,7 +623,7 @@ for(j in 2:nyear){
 		mutate(
 			## Updating accured benefits for active members 
 			#  all values are for a single member
-			Bx_new = ifelse(year == j, ((sx * bfactor_DA) * (1 + ben_idx_vec[j])), Bx_new),
+			Bx_new = ifelse(year == j, ((sx * bfactor_DA) * (1 + ben_idx_act_vec[j])), Bx_new),
 			
 			# Normal costs
 			NCx_fullIdx = Bx_new * fct_NCx_fullIdx
@@ -701,7 +724,7 @@ bind_rows(penSim_results) %>%
 				 FR_MA   = FR_MA_fullIdx,
 				 FR_AA   = FR_AA_fullIdx,
 				 UAAL    = UAAL_fullIdx,
-				 cola_actual = ben_idx,
+				 cola_actual = ben_idx_ret,
 				 salary  = PR
 				 ) %>% 
 	relocate(runname, sim, year)
@@ -767,8 +790,10 @@ if(init_UAAL_type != "model"){
 #*******************************************************************************
 
 penSim_results %>% 
-	filter(sim ==-2) %>% 
-	select(runname, sim, year,MA, AA, AL_fullIdx, AL_floorIdx, NC_PR, C_PR, FR_MA_fullIdx, FR_AA_fullIdx, PR, AA, ben_idx, SC_legacy, C, ERC, SC_legacy, NC, SC, LG) %>% 
+	filter(sim ==0) %>% 
+	select(runname, sim, year,MA, AA, AL_fullIdx, AL_floorIdx, NC_PR, C_PR, 
+				 FR_MA_fullIdx, FR_AA_fullIdx, PR, AA, ben_idx_act, ben_idx_ret, 
+				 SC_legacy, C, ERC, SC_legacy, NC, SC, LG) %>% 
 	print()
 
 

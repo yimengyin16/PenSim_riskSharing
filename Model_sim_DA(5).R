@@ -44,7 +44,7 @@ assign_parmsList(paramlist_,  envir = environment())
 
 # Override param values
 # ncore <- 6
-# nsim  <- 500
+nsim  <- 2
 # smooth_method <- "method2"
 
 
@@ -767,7 +767,7 @@ if(init_UAAL_type != "model"){
 #*******************************************************************************
 
 penSim_results %>% 
-	filter(sim ==-2) %>% 
+	filter(sim == 0) %>% 
 	select(runname, sim, year,MA, AA, AL_fullIdx, AL_floorIdx, NC_PR, C_PR, FR_MA_fullIdx, FR_AA_fullIdx, PR, AA, ben_idx, SC_legacy, C, ERC, SC_legacy, NC, SC, LG) %>% 
 	print()
 
