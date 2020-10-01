@@ -2616,15 +2616,17 @@ runnames_det <- c(
 		
 		cola_returnSmooth_calib2 = "Contingent COLA:\n5-year return",
 		cola_returnSmooth_calib2_s10 = "Contingent COLA:\n10-year return",
-		cola_FR_calib            = "Contingent COLA:\nfunded ratio",
+		cola_FR_calib            = "Contingent COLA:\nfunded ratio 100%",
 		
 		EEC_returnSmooth         = "Contingent EEC:\n5-year return",
-		EEC_FR                   = "Contingent EEC:\nfunded ratio",
+		EEC_FR                   = "Contingent EEC:\nfunded ratio 85%",
+		EEC_FR_t100              = "Contingent EEC:\nfunded ratio 100%",
 		
 		EEC_sharedADCcap         = "shared ADC\n 10% cap",  
 		EEC_sharedADC            = "shared ADC\n no floor", 
 		
 		hybrid_DB                = "Hybrid \nDB-DC",
+		hybrid_DB_noLegacy       = "Hybrid \nDB-DC\nNo legacy cost",
 		#mixed_WRS               = "WRS-like",
 		
 		cola_SDRS                = "SDRS-like",
@@ -2812,8 +2814,8 @@ df_DC_shock_sum <-
 
 
 df_detMeasures %<>% 
-	mutate(B_cohort_PV_26y = ifelse(runname == "hybrid_DB",     df_DC_shock_sum$B_cohort_PV_26y, B_cohort_PV_26y),
-				 B_cohort_PV_26y = ifelse(runname == "hybrid_DB_met", df_DC_met_sum$B_cohort_PV_26y, B_cohort_PV_26y),
+	mutate(B_cohort_PV_26y = ifelse(runname %in% c("hybrid_DB", "hybrid_DB_noLegacy"),     df_DC_shock_sum$B_cohort_PV_26y, B_cohort_PV_26y),
+				 B_cohort_PV_26y = ifelse(runname %in% c("hybrid_DB_met", "hybrid_DB_noLegacy_met"), df_DC_met_sum$B_cohort_PV_26y, B_cohort_PV_26y),
 				 )
 
 
@@ -2832,7 +2834,7 @@ xlsx::write.xlsx2(df_detMeasures, file = paste0(dir_outputs, "tbl_detMeasures.xl
 
 
 
-# Calculating longevity
+### Calculating longevity
 df <- results_all
 span <-  41
 ## Create a model run with cola_actual = infl and append to results_all
@@ -2863,6 +2865,26 @@ df_Eage <-
 
 df_Eage %>% 
 	summarise(Eage = sum(prob_age * age))
+
+
+
+
+### Impact on active members in the conditional indexation plan
+
+# Examine the impact of the asset shock on benefit at age 60 for different cohorts
+
+results_all %>% 
+	filter(runname %in% c("DA_as"), sim %in% c(-2, 0)) %>% 
+	select(runname, sim, year, ben_idx, ben_idx_act, ben_idx_ret, i.r)
+
+
+
+
+
+
+
+
+
 
 
 ```

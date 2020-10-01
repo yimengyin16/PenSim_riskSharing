@@ -1,10 +1,14 @@
 
 #*******************************************************************************
-#                           ### What's new in version (6)         ####                      
+#                           ### What's new in version (7)         ####                      
 #*******************************************************************************
 
-# Add independent control for indexation for actives and retirees. 
-
+## What's new in version (10)
+#  Changes to deterministic scenarios
+#    0:  FR = 75%,  assumption met
+#    -1: FR = 100%, assumption met
+#    -2: FR = 75%,  asset shock
+#    -3: FR = 100%, asset shock
 
 
 #*******************************************************************************
@@ -284,17 +288,18 @@ ben_idx_ret_vec <- rep(0, nyear)
 # ben_idx_vec
 
 
-
+## Assumption-met scenario:
+i.met <- rep(i.mean - i.sd^2/2, nyear)
+								
 ## Asset-shock scenario
 i.crisis <- rep(i.mean - i.sd^2/2, nyear)
 i.crisis[2:5] <- c(-0.24, 0.12, 0.12, 0.12)
 
-
 ## Stochastic returns
 set.seed(1234) ;i.r0 <- matrix(rnorm(nyear*nsim, i.mean, i.sd), nyear, nsim)
-i.r0 <- cbind(rep(i.mean - i.sd^2/2, nyear), i.r0)
-i.r0 <- cbind(i.crisis, i.crisis, i.r0)
-colnames(i.r0) <- -2:nsim
+#i.r0 <- cbind(rep(i.mean - i.sd^2/2, nyear), i.r0)
+i.r0 <- cbind(i.crisis, i.crisis, i.met, i.met, i.r0)
+colnames(i.r0) <- -3:nsim
 # i.r_ <- i.r
 # i.r0
 
@@ -380,12 +385,18 @@ df_agg_sim0 %<>%
 SC_amort0 <- matrix(0, nyear + m, nyear + m)
 
 
+if(init_UAAL_type != "model"){
+	
+		load(paste0(dir_Outputs, "Outputs_baseline.RData"))
+}
+
+
 cl <- makeCluster(ncore) 
 registerDoParallel(cl)
 
 # pb <- txtProgressBar(0, nsim + 3, style = 3)
 
-penSim_results <- foreach(k = -2:nsim, .packages = c("dplyr", "tidyr", "magrittr", "Rcpp")) %dopar% {
+penSim_results <- foreach(k = -3:nsim, .packages = c("dplyr", "tidyr", "magrittr", "Rcpp")) %dopar% {
 	
 	# setTxtProgressBar(pb, k)
 	
@@ -393,7 +404,7 @@ penSim_results <- foreach(k = -2:nsim, .packages = c("dplyr", "tidyr", "magrittr
 	
 # k = 1
 
-if(k == -1) MA_0_pct <- 1
+if(k %in% c(-3, -1)) MA_0_pct <- 1
 		
 
 	
@@ -498,11 +509,11 @@ df_agg_sim$FR_AA_floorIdx[1]   <- with(df_agg_sim, AA[1] / AL_floorIdx[1])
 
 ben_idx_act_vec[1] <-
 	df_agg_sim$ben_idx_act[1] <-
-	with(df_agg_sim, min(1, max(0, (AA[1] - AL_floorIdx[1])/(AL_fullIdx[1] - AL_floorIdx[1])))) * (idxFull_act_DA - idxFloor_act_DA) + idxFloor_act_DA
+	na2zero(with(df_agg_sim, min(1, max(0, (AA[1] - AL_floorIdx[1])/(AL_fullIdx[1] - AL_floorIdx[1]))))) * (idxFull_act_DA - idxFloor_act_DA) + idxFloor_act_DA
 
 ben_idx_ret_vec[1] <-
 	df_agg_sim$ben_idx_ret[1] <-
-	with(df_agg_sim, min(1, max(0, (AA[1] - AL_floorIdx[1])/(AL_fullIdx[1] - AL_floorIdx[1])))) * (idxFull_ret_DA - idxFloor_ret_DA) + idxFloor_ret_DA
+	na2zero(with(df_agg_sim, min(1, max(0, (AA[1] - AL_floorIdx[1])/(AL_fullIdx[1] - AL_floorIdx[1]))))) * (idxFull_ret_DA - idxFloor_ret_DA) + idxFloor_ret_DA
 
 
 
@@ -604,11 +615,11 @@ for(j in 2:nyear){
  
   ben_idx_act_vec[j] <-  
   	df_agg_sim$ben_idx_act[j] <- 
-  	with(df_agg_sim, min(1, max(0, (AA[j] - AL_floorIdx[j])/(AL_fullIdx[j] - AL_floorIdx[j])))) * (idxFull_act_DA - idxFloor_act_DA) + idxFloor_act_DA
+  	na2zero(with(df_agg_sim, min(1, max(0, (AA[j] - AL_floorIdx[j])/(AL_fullIdx[j] - AL_floorIdx[j]))))) * (idxFull_act_DA - idxFloor_act_DA) + idxFloor_act_DA
   
   ben_idx_ret_vec[j] <-  
   	df_agg_sim$ben_idx_ret[j] <- 
-  	with(df_agg_sim, min(1, max(0, (AA[j] - AL_floorIdx[j])/(AL_fullIdx[j] - AL_floorIdx[j])))) * (idxFull_ret_DA - idxFloor_ret_DA) + idxFloor_ret_DA
+  	na2zero(with(df_agg_sim, min(1, max(0, (AA[j] - AL_floorIdx[j])/(AL_fullIdx[j] - AL_floorIdx[j]))))) * (idxFull_ret_DA - idxFloor_ret_DA) + idxFloor_ret_DA
   
   # df_agg_sim 
   
@@ -721,7 +732,7 @@ bind_rows(penSim_results) %>%
 				 cola_type = cola_type,
 				 policy_type = policy_type,
 				 return_scn  = return_scn,
-				 sim     = rep(-2:nsim, each = nyear)) %>% 
+				 sim     = rep(-3:nsim, each = nyear)) %>% 
 	group_by(sim) %>% 
 	mutate(C_PR    = C / PR,
 				 NC_PR   = NC / PR,
@@ -759,7 +770,7 @@ if(init_UAAL_type != "model"){
 	# Set target UAAL
 	if(init_UAAL_type == "baseline"){
 
-		load(paste0(dir_Outputs, "Outputs_baseline.RData"))
+		# load(paste0(dir_Outputs, "Outputs_baseline.RData"))
 		UAAL_year1_target <- outputs_list$results %>% filter(sim == 0, year == 1) %>% pull(UAAL)
 
 	}
@@ -772,7 +783,7 @@ if(init_UAAL_type != "model"){
 
 	SC_amort_legacy[1:m] <- amort_LG(UAAL_year1_legacy, dr, m, salgrowth_amort, end = FALSE, method = "cd")
 
-  penSim_results$SC_legacy <- rep(SC_amort_legacy[1:nyear], nsim + 3)
+  penSim_results$SC_legacy <- rep(SC_amort_legacy[1:nyear], nsim + 4)
 
 }
 
@@ -797,8 +808,8 @@ if(init_UAAL_type != "model"){
 #*******************************************************************************
 
 penSim_results %>% 
-	filter(sim ==0) %>% 
-	select(runname, sim, year,MA, AA, AL_fullIdx, AL_floorIdx, NC_PR, C_PR, 
+	filter(sim ==-3) %>% 
+	select(runname, sim, year,MA, i.r, AA, AL_fullIdx, AL_floorIdx, NC_PR, C_PR, 
 				 FR_MA_fullIdx, FR_AA_fullIdx, PR, AA, ben_idx_act, ben_idx_ret, 
 				 SC_legacy, C, ERC, SC_legacy, NC, SC, LG) %>% 
 	print()

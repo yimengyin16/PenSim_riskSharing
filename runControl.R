@@ -91,12 +91,12 @@ for(runName in runList$runname ){
 
 
 	if (paramlist$policy_type == "DA") {
-		source("Model_sim_DA(6).R")
+		source("Model_sim_DA(8).R")
 	} else {
-		source("Model_sim_DB(9).R")
+		source("Model_sim_DB(11).R")
 	}
 
-	
+
 	outputs_list <- list(paramlist        = paramlist,
 											 Global_paramlist = Global_paramlist,
 											 results          = penSim_results)

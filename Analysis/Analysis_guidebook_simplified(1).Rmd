@@ -1,0 +1,886 @@
+---
+title: "Preparation for Policy Guidebook"
+output: 
+  html_notebook: 
+    number_sections: yes
+    toc: yes
+    fig_caption: yes
+editor_options: 
+  chunk_output_type: console
+---
+
+
+
+```{r Global_settings, include=FALSE}
+
+## Loading packages
+source(here::here("libraries.R"))
+
+theme_set(theme_yy())
+
+dir_modelResults <- paste0(here::here(),"/Outputs/")
+#dir_modelResults <- paste0(here::here(),"/Outputs_500sims/")
+dir_outputs      <- paste0(here::here(),"/Analysis/figTbl_guidebook/") 
+
+
+# Global parameters for analysis
+dr     <- 0.075 # discount rate
+dr_low <- 0.03  # lower discount rate
+infl   <- 0.02  # assumed inflation rate
+# Nyear  <- 40    # Number of sim years for contribution analysis
+cola_baseline <- 0.015
+
+DC_EECrate <- 0.025
+DC_ERCrate <- 0.028
+
+```
+
+
+```{r Loading_results, include = FALSE}
+
+source(here::here("Analysis_loadingResults.R"))
+# Outputs: 
+   # results_all
+   # run_labels
+
+
+
+```
+
+
+
+# Asset shock scenario: trade-off FR75%
+
+For each policy, compute the following measures:
+
+Impact on employer
+1. Risk reduction - long-term:   15-year PV ERC and its increase compared to assumption-met scenario
+2. Risk reduction - short-termL: Employer contribution rate 5 years after the asset shock
+
+Impact on members
+Risk transferred to employees
+3. Risk transfer - PV EEC: 15-year PV EEC and its increase compared to assumption met scenario
+4. Risk transfer - EEC rate: EEC rate 5 years after the asset shock
+5. Risk transfer - Total benenefit payment: 15-year total benefit payment compared to baseline (may underestimate )
+6. Risk transfer - PV benefit for new retirees: PV of lifetime benefit for new retirees who retire in year 1 or 2. 
+
+Impact on plan funding:
+7. Funded ratio by year 15. (MVA)
+
+
+Issues
+- Impact on members under the hybrid plan
+
+
+
+
+```{r tab_ERC_PV_FR75, echo = FALSE}
+
+## TODO: 
+#  - cola_return policy: restricting max cola to 1.5% after the recover period
+load("Inputs/riskShaing_demographics_100y.RData")
+
+
+runnames_det <- c(
+		baseline                 = "Baseline",
+		
+		cola_returnSmooth_calib2 = "Contingent COLA:\n5-year return",
+		cola_returnSmooth_calib2_s10 = "Contingent COLA:\n10-year return",
+		cola_FR_calib            = "Contingent COLA:\nfunded ratio 100%",
+		
+		EEC_returnSmooth         = "Contingent EEC:\n5-year return",
+		EEC_FR                   = "Contingent EEC:\nfunded ratio 85%",
+		EEC_FR_t100              = "Contingent EEC:\nfunded ratio 100%",
+		
+		EEC_sharedADCcap         = "shared ADC\n 10% cap",  
+		EEC_sharedADC            = "shared ADC\n no floor", 
+		
+		hybrid_DB                = "Hybrid \nDB-DC",
+		hybrid_DB_noLegacy       = "Hybrid \nDB-DC\nNo legacy cost",
+		#mixed_WRS               = "WRS-like",
+		
+		cola_SDRS                = "SDRS-like",
+		
+		DA_as                    = "Conditional \nindexation",
+		
+		DA_as_none         = "conditional indexation \n none",
+	  DA_as_act          = "conditional indexation \n actives only",
+	  DA_as_ret          = "conditional indexation \n retirees only"
+	)
+
+dr <- 0.075
+infl <- 0.02
+
+df_det <- 
+  results_all %>% 
+	ungroup() %>% 
+	filter(runname %in% names(runnames_det)) %>% 
+	filter(sim %in% c(-2, 0)) %>%
+	# filter(year <= 15) %>% 
+	select(runname, sim, year, ERC, EEC, UAAL, PR, B_tot = B, cola_actual, FR_MA, ERC_PR, EEC_PR, i.r, i.r_geoReturn_cola) %>% 
+	mutate(runname = as.character(runname),
+		     runname = ifelse(sim == 0, paste0(runname, "_met"), runname),
+				 runname = factor(runname, levels = c(names(runnames_det), paste0(names(runnames_det), "_met")))
+				 ) %>% 
+	group_by(runname) %>% 
+	mutate(B_cohort_nom  = 100 * cumprod(ifelse(year == 1, 1, lag(1 + cola_actual))),
+				 B_cohort_real = B_cohort_nom / (1+infl)^(year - 1),
+			
+				 	) %>% 
+	arrange(runname, year) %>% 
+	as_tibble()
+
+#df_det	%>% 
+#	filter()
+
+# Measures
+df_detMeasures1 <- 
+df_det %>% 
+	filter(year <= 15) %>% 
+	group_by(runname) %>% 
+  summarise(
+		        
+  	        # PV of ERC
+		        ERC_PV         = sum(ERC / (1 + dr)^(year - 1)),
+						ERCwUAAL_PV    = sum(ERC / (1 + dr)^(year - 1)) + UAAL[year == max(year)] / (1 + unique(dr))^(max(year) - 1),
+						
+			      # ERC rates in year 7 (when in shock is fully reflected through asset smoothing)
+						ERC_PR_y7    = ERC_PR[year == 7],
+						
+						
+						# PV of EEC
+						EEC_PV         = sum(EEC / (1 + dr)^(year - 1)),
+						
+						# EEC rates in year 7 (when in shock is fully reflected through asset smoothing)
+						EEC_PR_y7    = EEC_PR[year == 7],
+						
+						
+						# PV benefit
+						B_tot_PV        = sum(B_tot / (1 + dr)^(year - 1)),
+						B_cohort_PV_15y     = sum(B_cohort_nom / (1 + dr)^(year - 1)),
+						
+						# Final year FR
+						FR_y15 = FR_MA[year == max(year)], 
+						
+						# PV salary
+						PR_PV        = sum(PR / (1 + dr)^(year - 1)),
+						
+						) %>% 
+	mutate(ERC_PR_PV = ERC_PV / PR_PV,
+				 ERCwUAAL_PR_PV = ERCwUAAL_PV / PR_PV,
+				 EEC_PR_PV = EEC_PV / PR_PV
+				 )
+
+df_detMeasures1
+
+
+# PV of lifetime (40-year) benefit for new retirees in year 1
+df_detMeasures2 <-   
+  df_det %>%
+	filter(year <= 40) %>%
+	group_by(runname) %>%
+  summarise(B_cohort_PV_40y = sum(B_cohort_nom / (1 + dr)^(year - 1)))
+df_detMeasures2
+
+df_detMeasures3 <-   
+  df_det %>%
+	filter(year <= 26) %>%
+	group_by(runname) %>%
+	arrange(runname) %>% 
+  summarise(B_cohort_PV_26y = sum(B_cohort_nom / (1 + dr)^(year - 1)))
+df_detMeasures3
+
+
+# combine dfs
+df_detMeasures <- 
+	left_join(df_detMeasures1, df_detMeasures2, by = "runname") %>% 
+	left_join(df_detMeasures3, by = "runname") %>% 
+	relocate(B_cohort_PV_40y, .after = B_cohort_PV_15y) %>% 
+	relocate(B_cohort_PV_26y, .after = B_cohort_PV_15y)
+
+# # difference from baseline
+# df_detMeasures_diff <- 
+#   df_detMeasures %>% 
+# 	mutate(across(one_of("ERC_PV", "ERCwUAAL_PV", "EEC_PV", "B_tot_PV", "B_cohort_PV_15y", "B_cohort_PV_40y"), 
+# 								~ .x/.x[runname == "baseline"] - 1 )) %>% 
+# 	mutate(across(one_of("ERC_PR_y7", "EEC_PR_y7", "FR_y15", "ERC_PR_PV", "ERCwUAAL_PR_PV", "EEC_PR_PV"), 
+# 								~ .x - .x[runname == "baseline"] )) 
+
+
+## DC benefit
+
+# assumptions:
+#' DC balance at age 60 is equal to the PV of DB benefit. 
+#' Annual withdrawal rate: 7.5%
+#' Annual payment is calculated as DC / ax.r
+#' the PV Benefit is calculated as the PV all benefit payment up to age x plus the PV of remaining DC balance
+
+withdrawalRate <- 0.075
+
+df_DC <- 
+df_retirees %>% 
+	filter(!is.na(year),
+				 year <= 41
+				 ) %>% 
+  rename(B_ret  = B.r,
+	  		 AL_ret = ALx.r,
+		  	 n_ret  = number.r,
+  			 ret_year = year.retire) %>%
+	mutate(start_year = year - (age - ea),
+				 ret_age    = age - (year - ret_year)) %>% 
+	filter(ret_year == 1 | ret_age == 60, 
+				 !(ret_year < 1 & n_ret == 0),    # excluding some unnecessary rows
+				 year <= 41) %>% 
+	filter(start_year  == -10, ret_year == 1) %>% 
+
+	mutate(PVB_DB = 50 * AL_ret / B_ret[age == 60],
+				 B_DB   = 50 * B_ret / B_ret[age == 60],
+				 DC_balance = ifelse(year == 1, PVB_DB, 0),
+				 B_DC = ifelse(year == 1, DC_balance * withdrawalRate, 0)) %>% 
+	select(year, age, ax.r, PVB_DB, B_DB, DC_balance, B_DC) 
+
+
+df_return <- 
+results_all %>% 
+	filter(runname == "baseline", sim %in% c(-2, 0)) %>% 
+	select(sim, year, i.r) %>% 
+	spread(sim, i.r) %>% 
+	rename(i.r_shock = 2, i.r_met = 3)
+
+df_DC %<>% left_join(df_return) 
+
+df_DC_met <- df_DC_shock <- df_DC
+
+
+for(j in 2:41){
+	df_DC_met$DC_balance[j] <- with(df_DC_met, (DC_balance[j - 1] - B_DC[j - 1]) * (1 + i.r_met[j - 1]))
+	df_DC_met$B_DC[j] <-  with(df_DC_met, DC_balance[j] * withdrawalRate )
+}
+df_DC_met 
+
+for(j in 2:41){
+	df_DC_shock$DC_balance[j] <- with(df_DC_shock, (DC_balance[j - 1] - B_DC[j - 1]) * (1 + i.r_shock[j - 1]))
+	df_DC_shock$B_DC[j] <-  with(df_DC_shock, DC_balance[j] * withdrawalRate )
+}
+df_DC_shock 
+
+
+df_DC_met_sum <- 
+  df_DC_met %>%
+	filter(age <= 85) %>% 
+	summarise(B_DB_PV_26y = sum(B_DB / (1 + dr)^(year - 1)),
+						B_DC_PV_26y = sum(B_DC / (1 + dr)^(year - 1)) + DC_balance[age == 85]/ (1 + dr)^(26 - 1),
+						) %>% 
+	mutate(B_cohort_PV_26y = B_DB_PV_26y + B_DC_PV_26y)
+
+df_DC_shock_sum <- 
+  df_DC_shock %>%
+	filter(age <= 85) %>% 
+	summarise(B_DB_PV_26y = sum(B_DB / (1 + dr)^(year - 1)),
+						B_DC_PV_26y = sum(B_DC / (1 + dr)^(year - 1)) + DC_balance[age == 85]/ (1 + dr)^(26 - 1),
+						) %>% 
+	mutate(B_cohort_PV_26y = B_DB_PV_26y + B_DC_PV_26y)
+
+
+
+df_detMeasures %<>% 
+	mutate(B_cohort_PV_26y = ifelse(runname %in% c("hybrid_DB", "hybrid_DB_noLegacy"),     df_DC_shock_sum$B_cohort_PV_26y, B_cohort_PV_26y),
+				 B_cohort_PV_26y = ifelse(runname %in% c("hybrid_DB_met", "hybrid_DB_noLegacy_met"), df_DC_met_sum$B_cohort_PV_26y, B_cohort_PV_26y),
+				 )
+
+
+df_detMeasures 
+
+
+
+
+xlsx::write.xlsx2(df_detMeasures, file = paste0(dir_outputs, "tbl_detMeasures_FR75.xlsx"), sheetName = "detMeasures")
+# xlsx::write.xlsx2(df_detMeasures, file = paste0(dir_outputs, "tbl_detMeasures.xlsx"), sheetName = "detMeasures_diff", append = TRUE)
+
+
+
+### Calculating longevity
+df <- results_all
+span <-  41
+## Create a model run with cola_actual = infl and append to results_all
+
+
+## df of annual benefit payments and discount factors
+df_benefit <- 
+  df %>% 
+	filter(year %in% 1:41) %>% 
+	select(runname, runname_wlabel, policy_type, sim, year, cola_actual) %>% 
+	group_by(runname, sim) %>% 
+	mutate(age = seq_len(span) - 1 + 60 ) %>% 
+	left_join(decrement %>% ungroup() %>% filter(ea == min(ea))  %>% select(age, qxm.r) , by = "age") %>% 
+	mutate(qxm.r   = ifelse(age == max(age), 1, qxm.r),
+				 fct_qxm = ifelse(age == 60, 1, lag(cumprod(1-qxm.r))),
+				 fct_dr      = 1/(1 + dr)^(age - 60),
+				 fct_dr_low  = 1/(1 + dr_low)^(age - 60),
+				 B       = 100 * ifelse(age == 60, 1, lag(cumprod(1+cola_actual))),
+				 B_real  = B / (1 + infl)^(age - 60)
+				 # B_real_chg5y = rollapply(B_real, width = 6, get_nyearMin, fill = NA, align = "right")
+				 )
+
+# expected longevity
+df_Eage <- 
+	df_benefit %>% 
+	filter(runname == "baseline", sim == 0) %>%  
+	mutate(prob_age = qxm.r * fct_qxm) 
+
+df_Eage %>% 
+	summarise(Eage = sum(prob_age * age))
+
+
+
+
+### Impact on active members in the conditional indexation plan
+
+# Examine the impact of the asset shock on benefit at age 60 for different cohorts
+
+bfactor <- 0.025
+
+df_DA_act <-
+	bind_rows(
+		results_all %>%
+			filter(runname %in% c("DA_as"), sim %in% c(-2, 0)) %>%
+			select(runname, sim, year, ben_idx_act = ben_idx),
+		
+		results_all %>%
+			filter(runname %in% c("DA_as_none"), sim %in% c(0)) %>%
+			select(runname, sim, year, ben_idx_act)
+	)
+
+df_DA_act %<>% 
+	mutate(type = paste0(runname, sim)) %>% 
+	select(type, year, ben_idx_act) %>% 
+	spread(type, ben_idx_act) %>% 
+	rename(idx_baseline = 3,
+				 idx_shock = 2,
+				 idx_met = 4)
+	
+	
+
+# extract salary for new employees in year 1
+df <-
+	df_actives %>%
+	mutate(start_year = year - (age - ea)) %>%
+	filter(start_year == 1, ea %in% c(20, 30, 40)) %>%
+	select(year, ea, age, sx) %>%
+	arrange(ea, age) %>%
+	left_join(df_DA_act, by = "year")
+
+df %<>% 
+	gather(type, idx, -year, -ea, -age, -sx) %>% 
+	select(ea, type, year, age, sx, idx) %>% 
+	arrange(ea, type)
+
+df %<>% 
+	group_by(ea, type) %>% 
+	filter(age < 60) %>% 
+	mutate(sx_adj = sx * order_by(-year, cumprod(1+idx))) %>% 
+	summarise(ben_age60 = sum(sx_adj * bfactor)) %>% 
+	spread(type, ben_age60) %>% 
+	mutate(impact_tot  = (idx_shock - idx_baseline)/idx_baseline,
+				 impact_cost = (idx_met - idx_baseline)/idx_baseline,
+				 impact_risk = impact_tot - impact_cost
+				 )
+
+xlsx::write.xlsx2(df, file = paste0(dir_outputs, "tbl_detMeasures_FR75.xlsx"), sheetName = "DA_benefit_actives", append = TRUE)
+
+```
+
+
+
+```{r tab_ERC_PV_FR100, echo = FALSE}
+
+## TODO: 
+#  - cola_return policy: restricting max cola to 1.5% after the recover period
+load("Inputs/riskShaing_demographics_100y.RData")
+
+
+runnames_det <- c(
+		baseline                 = "Baseline",
+		
+		cola_returnSmooth_calib2 = "Contingent COLA:\n5-year return",
+		cola_returnSmooth_calib2_s10 = "Contingent COLA:\n10-year return",
+		cola_FR_calib            = "Contingent COLA:\nfunded ratio 100%",
+		
+		EEC_returnSmooth         = "Contingent EEC:\n5-year return",
+		EEC_FR                   = "Contingent EEC:\nfunded ratio 85%",
+		EEC_FR_t100              = "Contingent EEC:\nfunded ratio 100%",
+		
+		EEC_sharedADCcap         = "shared ADC\n 10% cap",  
+		EEC_sharedADC            = "shared ADC\n no floor", 
+		
+		hybrid_DB                = "Hybrid \nDB-DC",
+		hybrid_DB_noLegacy       = "Hybrid \nDB-DC\nNo legacy cost",
+		#mixed_WRS               = "WRS-like",
+		
+		cola_SDRS                = "SDRS-like",
+		
+		DA_as                    = "Conditional \nindexation",
+		
+		DA_as_none         = "conditional indexation \n none",
+	  DA_as_act          = "conditional indexation \n actives only",
+	  DA_as_ret          = "conditional indexation \n retirees only"
+	)
+
+dr <- 0.075
+infl <- 0.02
+
+df_det <- 
+  results_all %>% 
+	ungroup() %>% 
+	filter(runname %in% names(runnames_det)) %>% 
+	filter(sim %in% c(-3, -1)) %>%
+	# filter(year <= 15) %>% 
+	select(runname, sim, year, ERC, EEC, UAAL, PR, B_tot = B, cola_actual, FR_MA, ERC_PR, EEC_PR, i.r, i.r_geoReturn_cola) %>% 
+	mutate(runname = as.character(runname),
+		     runname = ifelse(sim == -1, paste0(runname, "_met"), runname),
+				 runname = factor(runname, levels = c(names(runnames_det), paste0(names(runnames_det), "_met")))
+				 ) %>% 
+	group_by(runname) %>% 
+	mutate(B_cohort_nom  = 100 * cumprod(ifelse(year == 1, 1, lag(1 + cola_actual))),
+				 B_cohort_real = B_cohort_nom / (1+infl)^(year - 1),
+			
+				 	) %>% 
+	arrange(runname, year) %>% 
+	as_tibble()
+
+#df_det	%>% 
+#	filter()
+
+# Measures
+df_detMeasures1 <- 
+df_det %>% 
+	filter(year <= 15) %>% 
+	group_by(runname) %>% 
+  summarise(
+		        
+  	        # PV of ERC
+		        ERC_PV         = sum(ERC / (1 + dr)^(year - 1)),
+						ERCwUAAL_PV    = sum(ERC / (1 + dr)^(year - 1)) + UAAL[year == max(year)] / (1 + unique(dr))^(max(year) - 1),
+						
+			      # ERC rates in year 7 (when in shock is fully reflected through asset smoothing)
+						ERC_PR_y7    = ERC_PR[year == 7],
+						
+						
+						# PV of EEC
+						EEC_PV         = sum(EEC / (1 + dr)^(year - 1)),
+						
+						# EEC rates in year 7 (when in shock is fully reflected through asset smoothing)
+						EEC_PR_y7    = EEC_PR[year == 7],
+						
+						
+						# PV benefit
+						B_tot_PV        = sum(B_tot / (1 + dr)^(year - 1)),
+						B_cohort_PV_15y     = sum(B_cohort_nom / (1 + dr)^(year - 1)),
+						
+						# Final year FR
+						FR_y15 = FR_MA[year == max(year)], 
+						
+						# PV salary
+						PR_PV        = sum(PR / (1 + dr)^(year - 1)),
+						
+						) %>% 
+	mutate(ERC_PR_PV = ERC_PV / PR_PV,
+				 ERCwUAAL_PR_PV = ERCwUAAL_PV / PR_PV,
+				 EEC_PR_PV = EEC_PV / PR_PV
+				 )
+
+df_detMeasures1
+
+
+# PV of lifetime (40-year) benefit for new retirees in year 1
+df_detMeasures2 <-   
+  df_det %>%
+	filter(year <= 40) %>%
+	group_by(runname) %>%
+  summarise(B_cohort_PV_40y = sum(B_cohort_nom / (1 + dr)^(year - 1)))
+df_detMeasures2
+
+df_detMeasures3 <-   
+  df_det %>%
+	filter(year <= 26) %>%
+	group_by(runname) %>%
+	arrange(runname) %>% 
+  summarise(B_cohort_PV_26y = sum(B_cohort_nom / (1 + dr)^(year - 1)))
+df_detMeasures3
+
+
+# combine dfs
+df_detMeasures <- 
+	left_join(df_detMeasures1, df_detMeasures2, by = "runname") %>% 
+	left_join(df_detMeasures3, by = "runname") %>% 
+	relocate(B_cohort_PV_40y, .after = B_cohort_PV_15y) %>% 
+	relocate(B_cohort_PV_26y, .after = B_cohort_PV_15y)
+
+# # difference from baseline
+# df_detMeasures_diff <- 
+#   df_detMeasures %>% 
+# 	mutate(across(one_of("ERC_PV", "ERCwUAAL_PV", "EEC_PV", "B_tot_PV", "B_cohort_PV_15y", "B_cohort_PV_40y"), 
+# 								~ .x/.x[runname == "baseline"] - 1 )) %>% 
+# 	mutate(across(one_of("ERC_PR_y7", "EEC_PR_y7", "FR_y15", "ERC_PR_PV", "ERCwUAAL_PR_PV", "EEC_PR_PV"), 
+# 								~ .x - .x[runname == "baseline"] )) 
+
+
+## DC benefit
+
+# assumptions:
+#' DC balance at age 60 is equal to the PV of DB benefit. 
+#' Annual withdrawal rate: 7.5%
+#' Annual payment is calculated as DC / ax.r
+#' the PV Benefit is calculated as the PV all benefit payment up to age x plus the PV of remaining DC balance
+
+withdrawalRate <- 0.075
+
+df_DC <- 
+df_retirees %>% 
+	filter(!is.na(year),
+				 year <= 41
+				 ) %>% 
+  rename(B_ret  = B.r,
+	  		 AL_ret = ALx.r,
+		  	 n_ret  = number.r,
+  			 ret_year = year.retire) %>%
+	mutate(start_year = year - (age - ea),
+				 ret_age    = age - (year - ret_year)) %>% 
+	filter(ret_year == 1 | ret_age == 60, 
+				 !(ret_year < 1 & n_ret == 0),    # excluding some unnecessary rows
+				 year <= 41) %>% 
+	filter(start_year  == -10, ret_year == 1) %>% 
+
+	mutate(PVB_DB = 50 * AL_ret / B_ret[age == 60],
+				 B_DB   = 50 * B_ret / B_ret[age == 60],
+				 DC_balance = ifelse(year == 1, PVB_DB, 0),
+				 B_DC = ifelse(year == 1, DC_balance * withdrawalRate, 0)) %>% 
+	select(year, age, ax.r, PVB_DB, B_DB, DC_balance, B_DC) 
+
+
+df_return <- 
+results_all %>% 
+	filter(runname == "baseline", sim %in% c(-3, -1)) %>% 
+	select(sim, year, i.r) %>% 
+	spread(sim, i.r) %>% 
+	rename(i.r_shock = "-3", i.r_met = "-1")
+
+df_DC %<>% left_join(df_return) 
+
+df_DC_met <- df_DC_shock <- df_DC
+
+
+for(j in 2:41){
+	df_DC_met$DC_balance[j] <- with(df_DC_met, (DC_balance[j - 1] - B_DC[j - 1]) * (1 + i.r_met[j - 1]))
+	df_DC_met$B_DC[j] <-  with(df_DC_met, DC_balance[j] * withdrawalRate )
+}
+df_DC_met 
+
+for(j in 2:41){
+	df_DC_shock$DC_balance[j] <- with(df_DC_shock, (DC_balance[j - 1] - B_DC[j - 1]) * (1 + i.r_shock[j - 1]))
+	df_DC_shock$B_DC[j] <-  with(df_DC_shock, DC_balance[j] * withdrawalRate )
+}
+df_DC_shock 
+
+
+df_DC_met_sum <- 
+  df_DC_met %>%
+	filter(age <= 85) %>% 
+	summarise(B_DB_PV_26y = sum(B_DB / (1 + dr)^(year - 1)),
+						B_DC_PV_26y = sum(B_DC / (1 + dr)^(year - 1)) + DC_balance[age == 85]/ (1 + dr)^(26 - 1),
+						) %>% 
+	mutate(B_cohort_PV_26y = B_DB_PV_26y + B_DC_PV_26y)
+
+df_DC_shock_sum <- 
+  df_DC_shock %>%
+	filter(age <= 85) %>% 
+	summarise(B_DB_PV_26y = sum(B_DB / (1 + dr)^(year - 1)),
+						B_DC_PV_26y = sum(B_DC / (1 + dr)^(year - 1)) + DC_balance[age == 85]/ (1 + dr)^(26 - 1),
+						) %>% 
+	mutate(B_cohort_PV_26y = B_DB_PV_26y + B_DC_PV_26y)
+
+
+
+df_detMeasures %<>% 
+	mutate(B_cohort_PV_26y = ifelse(runname %in% c("hybrid_DB", "hybrid_DB_noLegacy"),     df_DC_shock_sum$B_cohort_PV_26y, B_cohort_PV_26y),
+				 B_cohort_PV_26y = ifelse(runname %in% c("hybrid_DB_met", "hybrid_DB_noLegacy_met"), df_DC_met_sum$B_cohort_PV_26y, B_cohort_PV_26y),
+				 )
+
+
+df_detMeasures 
+
+
+
+
+xlsx::write.xlsx2(df_detMeasures, file = paste0(dir_outputs, "tbl_detMeasures_FR100.xlsx"), sheetName = "detMeasures")
+# xlsx::write.xlsx2(df_detMeasures, file = paste0(dir_outputs, "tbl_detMeasures.xlsx"), sheetName = "detMeasures_diff", append = TRUE)
+
+
+### Impact on active members in the conditional indexation plan
+
+# Examine the impact of the asset shock on benefit at age 60 for different cohorts
+
+bfactor <- 0.025
+
+df_DA_act <-
+	bind_rows(
+		results_all %>%
+			filter(runname %in% c("DA_as"), sim %in% c(-3, -1)) %>%
+			select(runname, sim, year, ben_idx_act),
+		
+		results_all %>%
+			filter(runname %in% c("DA_as_none"), sim %in% c(-1)) %>%
+			select(runname, sim, year, ben_idx_act)
+	)
+
+df_DA_act %<>% 
+	mutate(type = paste0(runname, sim)) %>% 
+	select(type, year, ben_idx_act) %>% 
+	spread(type, ben_idx_act) %>% 
+	rename(idx_baseline = "DA_as_none-1",
+				 idx_shock = "DA_as-3",
+				 idx_met = "DA_as-1")
+	
+	
+
+# extract salary for new employees in year 1
+df <-
+	df_actives %>%
+	mutate(start_year = year - (age - ea)) %>%
+	filter(start_year == 1, ea %in% c(20, 30, 40)) %>%
+	select(year, ea, age, sx) %>%
+	arrange(ea, age) %>%
+	left_join(df_DA_act, by = "year")
+
+df %<>% 
+	gather(type, idx, -year, -ea, -age, -sx) %>% 
+	select(ea, type, year, age, sx, idx) %>% 
+	arrange(ea, type)
+
+df %<>% 
+	group_by(ea, type) %>% 
+	filter(age < 60) %>% 
+	mutate(sx_adj = sx * order_by(-year, cumprod(1+idx))) %>% 
+	summarise(ben_age60 = sum(sx_adj * bfactor)) %>% 
+	spread(type, ben_age60) %>% 
+	mutate(impact_tot  = (idx_shock - idx_baseline)/idx_baseline,
+				 impact_cost = (idx_met - idx_baseline)/idx_baseline,
+				 impact_risk = impact_tot - impact_cost
+				 )
+df
+
+xlsx::write.xlsx2(df, file = paste0(dir_outputs, "tbl_detMeasures_FR100.xlsx"), sheetName = "DA_benefit_actives", append = TRUE)
+
+```
+
+
+
+# Special topic 1: SDRS-like policy
+
+1. Measure: likelihood of corrective action
+   - Starting with 75% and 100% baseline FR
+   - distribution of years in CA in the first 15 years
+   - starting with 100% FR, what's the likelihood of at least 1 CA?
+   - starting with the 75% FR, what's the likelihood of at least 1 CA in addition to the initial one?
+   - Contribution volatility under CA
+   
+2. The impact of the choice of corrective action
+   - Under the asset-shock scenario, compare a fast and a slow CA policy
+      - fast: 5-year open amortization formula until out of CA
+      - slow: 10/15-year open amortization formula until out of CA
+
+3. Discussion
+   - Compare SDRS model and traditional DB model
+  		- traditional DB: absorb risks through variation in contribution for risks of any magnitude
+      - SDRS: 
+        - small risks: hedged by contingent COLA, keeping contribution constant
+        - large risks: corrective action, can be combinations of contribution increase and benefit cuts. 
+        - Over-contribute in good times
+   - What affect the effectiveness of the conditional COLA mechanism?
+        - sensitivity of AL to COLA
+        - more effective if (1) higher B/A ratio, (2) longer life expectancy 
+        - discount rate (actual SDRS use low DR)
+   
+```{r}
+
+df_SDRS <- 
+  results_all %>% 
+  filter(runname %in% c("cola_SDRS", "cola_SDRS_noCAeec", "cola_SDRS_FR100")) %>% 
+	# select(runname, sim, year, FR_MA_baseline, FR_MA_solved, SC_SDRS, cola_actual) %>% 
+	mutate(corrAct = cola_actual == 0)
+
+  df_SDRS %>% 
+  	filter(sim == 73) %>% 
+  	select(runname, sim, year, FR_MA_baseline, FR_MA_solved, SC_SDRS, cola_actual)
+
+## distribution of Years in corrective action 
+# First 15 years 
+   df_SDRS %>% 
+   	filter(runname %in% c("cola_SDRS", "cola_SDRS_FR100")) %>% 
+  	filter(year <= 15, sim >= 1) %>% 
+  	group_by(runname, sim) %>% 
+  	summarise(CA_yrs = sum(corrAct) / n()) %>% 
+  	summarise(CA_yrs_p90 = quantile(CA_yrs, 0.9),
+  						CA_yrs_p75 = quantile(CA_yrs, 0.75),
+  		        CA_yrs_p50 = quantile(CA_yrs, 0.5),
+  						CA_yrs_p25 = quantile(CA_yrs, 0.25),
+  		        CA_yrs_p10 = quantile(CA_yrs, 0.1))
+
+   # FR75:  0.4 * 15   ~= 6 years in CA at median, 9 years at 75th percentile
+   # FR100: 0.133 * 15 ~= 2 years in CA at median, 5 years at 75th percentile
+   
+# First 30 years
+    df_SDRS %>% 
+    filter(runname %in% c("cola_SDRS", "cola_SDRS_FR100")) %>% 
+  	filter(year <= 30, sim >= 1) %>% 
+  	group_by(runname, sim) %>% 
+  	summarise(CA_yrs = sum(corrAct) / n()) %>% 
+  	summarise(CA_yrs_p90 = quantile(CA_yrs, 0.9),
+  						CA_yrs_p75 = quantile(CA_yrs, 0.75),
+  		        CA_yrs_p50 = quantile(CA_yrs, 0.5),
+  						CA_yrs_p25 = quantile(CA_yrs, 0.25),
+  		        CA_yrs_p10 = quantile(CA_yrs, 0.1))
+
+    
+   # FR75:  0.27 *  30 ~= 8 years in CA at median, 13 years at 75th percentile
+   # FR100: 0.133 * 30 ~= 4 years in CA at median, 9 years  at 75th percentile
+   
+    
+    
+    
+## Probatility of at least one corrective action
+
+ # starting with FR = 75%, at least one CA after year 5(when the first one should end)
+    
+    # year 6-15
+    df_SDRS %>% 
+    filter(runname %in% c("cola_SDRS", "cola_SDRS_FR100")) %>% 	
+  	filter(year %in% 6:15, sim >= 1) %>% 
+  	group_by(runname, sim) %>% 
+  	summarise(CA = any(corrAct)) %>% 
+  	summarise(prob_CA = sum(CA)/n())
+    # year 6-30
+    df_SDRS %>% 
+    filter(runname %in% c("cola_SDRS", "cola_SDRS_FR100")) %>%  	
+  	filter(year %in% 6:30, sim >= 1) %>% 
+  	group_by(runname, sim) %>% 
+  	summarise(CA = any(corrAct)) %>% 
+  	summarise(prob_CA = sum(CA)/n())
+    
+    # FR75: 70% chanace of 1 CA after year 6 in 15 years
+    # FR75: 79% chanace of 1 CA after year 6 in 30 years
+    
+    
+    # year 1-15
+    df_SDRS %>% 
+    filter(runname %in% c("cola_SDRS", "cola_SDRS_FR100")) %>% 
+  	filter(year %in% 1:15, sim >= 1) %>% 
+  	group_by(runname, sim) %>% 
+  	summarise(CA = any(corrAct)) %>% 
+  	summarise(prob_CA = sum(CA)/n())
+    # year 1-30
+    df_SDRS %>% 
+    filter(runname %in% c("cola_SDRS", "cola_SDRS_FR100")) %>% 
+  	filter(year %in% 1:30, sim >= 1) %>% 
+  	group_by(runname, sim) %>% 
+  	summarise(CA = any(corrAct)) %>% 
+  	summarise(prob_CA = sum(CA)/n())
+    # FR100: 68% chanace of 1 CA after year 1 in 15 years
+    # FR100: 74% chanace of 1 CA after year 1 in 30 years 
+    
+    
+## ERC rate and EEC rate during CA
+    
+    # Across all simulations 
+    df_SDRS %>% 
+     	filter(year %in% 1:30, sim >= 1) %>% 
+      group_by(runname, corrAct) %>% 
+    	summarise(ERC_PR_avg = median(ERC_PR),
+    						EEC_PR_avg = median(EEC_PR))
+    
+    
+    # Distribution of ERC rate under CA
+     df_SDRS %>% 
+     	filter(year %in% 1:15, sim >= 1, corrAct == TRUE) %>% 
+      group_by(runname, corrAct) %>% 
+    	summarise(ERC_PR_p90 = quantile(ERC_PR, 0.9),
+  							ERC_PR_p75 = quantile(ERC_PR, 0.75),
+  		        	ERC_PR_p50 = quantile(ERC_PR, 0.5),
+  							ERC_PR_p25 = quantile(ERC_PR, 0.25),
+  		        	ERC_PR_p10 = quantile(ERC_PR, 0.1))
+    
+     
+    # comparing ERC_PR under SDRS and baseline: average ERC_PR in CA vs non-CA periods
+    
+    df_tmp <-  
+    results_all %>% 
+    	filter(runname == "baseline") %>% 
+    	left_join( df_SDRS %>% 
+    	           filter(runname == "cola_SDRS") %>% 
+    	           select(sim, year, corrAct)
+    						 ) %>% 
+    	group_by(runname, corrAct)
+    
+      df_tmp %>%
+    	filter(year %in% 1:30, sim >=1) %>% 
+    	summarise(ERC_PR_avg = median(ERC_PR),
+    						EEC_PR_avg = median(EEC_PR),
+    						CA = n() )
+    
+      df_tmp %>%
+    	filter(year %in% 1:15, sim >=1, corrAct == TRUE) %>% 
+      summarise(ERC_PR_p90 = quantile(ERC_PR, 0.9),
+  							ERC_PR_p75 = quantile(ERC_PR, 0.75),
+  		        	ERC_PR_p50 = quantile(ERC_PR, 0.5),
+  							ERC_PR_p25 = quantile(ERC_PR, 0.25),
+  		        	ERC_PR_p10 = quantile(ERC_PR, 0.1))
+    
+    
+     # histogram
+    df_tmp2 <- 
+    results_all %>% 
+    #filter(runname %in% c("baseline", "cola_SDRS_noCAeec"), sim >= 1 ) %>% 
+    filter(runname %in% c("baseline_FR100", "cola_SDRS_noCAeec_FR100"), sim >= 1 ) %>% 
+    select(runname, sim, year, ERC_PR)
+    
+    df_tmp2 %>% 
+    	filter(year <= 15, year > 1) %>% 
+    	ggplot(aes(x = ERC_PR, fill = runname)) + 
+    	geom_histogram(binwidth = .01, alpha = 0.3, position = "identity") +
+    	coord_cartesian(x = c(0, 0.6)) 
+      
+    df_tmp2 %>% 
+    	filter(year <= 15, year > 1) %>% 
+    	ggplot(aes(x = ERC_PR, fill = runname)) + 
+    	geom_histogram(binwidth = .01, alpha = 0.3, position = "identity") +
+    	coord_cartesian(x = c(0, 0.6), y = c(0, 2000))
+    
+  
+    
+    # compare dsitributions
+    # http://rstudio-pubs-static.s3.amazonaws.com/374857_5a23bad9783a43c1b102aa80aa5c1a7c.html
+
+     
+    
+```
+
+
+
+# Special topic 2: conditional indexation
+1. Decomposing the total impact
+   - Impact of conditional benefit accrual 
+   - Impact of conditional COLA 
+   
+2. Try implementing catch-up indexation. 
+
+
+
+# Special topic 3: hybrid DB-DC
+1. Uncertainty in benefit:
+   - compare uncertainty in final DC balance and how that converts to uncertainty in benefit
+   - Uncertainty in lifetime benefit: takes into account risks during retirement
+
+
+
+
+
