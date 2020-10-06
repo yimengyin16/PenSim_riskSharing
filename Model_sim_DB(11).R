@@ -589,7 +589,7 @@ penSim_results <- foreach(k = -3:nsim, .packages = c("dplyr", "tidyr", "magrittr
 
 	source("Functions.R")
   
-	if(k %in% c(-3, -1)) MA_0_pct <- 1
+	if(k %in% c(-3, -1)) MA_0_pct <- 1 else MA_0_pct <- paramlist_$MA_0_pct
 	
 	if(init_UAAL_type != "model"){	
 		

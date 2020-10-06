@@ -48,7 +48,7 @@ assign_parmsList(paramlist_,  envir = environment())
 
 # Override param values
 # ncore <- 6
-nsim  <- 5
+# nsim  <- 50
 # smooth_method <- "method2"
 
 
@@ -407,8 +407,8 @@ penSim_results <- foreach(k = -3:nsim, .packages = c("dplyr", "tidyr", "magrittr
 	
 # k = 1
 
-if(k %in% c(-3, -1)) MA_0_pct <- 1
-		
+# if(k %in% c(-3, -1)) MA_0_pct <- 1
+if(k %in% c(-3, -1)) MA_0_pct <- 1 else MA_0_pct <- paramlist_$MA_0_pct		
 
 	
 # Initialization 
@@ -820,7 +820,7 @@ penSim_results %>%
 				 SC_legacy, C, ERC, SC_legacy, NC, SC, LG) %>% 
 	print()
 
-
+# penSim_results %>% filter(year == 1) %>% select(year, sim, FR_MA)
 
 # df_indiv_sim %>% filter(start_year == 1,  ea == 31)
 # df_indiv_sim %>% filter(start_year == -10)
