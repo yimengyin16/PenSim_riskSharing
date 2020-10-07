@@ -954,7 +954,7 @@ df_CAGR26 <- get_CAGR(results_all, 26)
 
 
 ## Analysis of ERC
-```{r ERC_prep, echo = FALSE, warning=FALSE}
+```{r ERC_prep, echo=FALSE, warning=FALSE}
 
 ## PV ERC and EEC 
 get_PVC <- function(df, span, dr = 0.075){
@@ -1889,6 +1889,477 @@ xlsx::write.xlsx2(tbl_Bvol_y41$df_tbl,
 									append = TRUE)
 
 ```
+
+
+
+# Figures
+
+
+## Distribution of pvERC
+```{r}
+
+# Use df_PVC_qtiles_15/30y generated in section "Analysis ERC"
+
+df_PVC_qtiles_y15_plot <- 
+  df_PVC_qtiles_15y %>% 
+	mutate_at(vars(-runname,-runname_wlabel), ~ 100 *./df_PVC_qtiles_15y$ERC_PV_q50[df_PVC_qtiles_15y$runname == "baseline"]) %>% 
+	select(runname, contains("ERC_PV")) 
+   
+
+runnames_ERC <- c(
+   	baseline                 = "Baseline",
+		
+		cola_returnSmooth_calib2     = "Contingent\nCOLA:\n5-year return",
+		# cola_returnSmooth_calib2_s10 = "Contingent COLA:\n10-year return",
+		cola_FR_calib                = "Contingent\nCOLA:\nfunded ratio",
+		
+		EEC_returnSmooth         = "Contingent\nEEC:\n5-year return",
+		# EEC_FR                   = "Contingent EEC:\nfunded ratio threshold 85%",
+		EEC_FR_t100              = "Contingent\nEEC:\nfunded ratio",
+		
+		EEC_sharedADCcap         = "shared ADC\n 10% EEC cap",  
+		EEC_sharedADC            = "shared ADC\n no EEC cap", 
+		
+		#hybrid_DB                = "Hybrid \nDB-DC",
+		hybrid_DB_noLegacy       = "Hybrid \nDB-DC",
+		cola_SDRS                = "SDRS-like",
+		DA_as                    = "Conditional \nindexation"
+		
+)
+
+
+
+df_PVC_qtiles_plot <- df_PVC_qtiles_y15_plot 
+nyear_pvERC <- 15
+
+fig_title    <- paste0("Distributions of the present value of ", nyear_pvERC, "-year employer contributions (ERC) \nunder different risk-sharing policies") 
+ 
+fig_dist_pvERC_y15_all <- 
+  df_PVC_qtiles_plot %>% 
+  filter(runname %in% names(runnames_ERC)) %>% 
+	mutate(runname = factor(runname, levels = names(runnames_ERC), 
+													         labels = runnames_ERC)) %>% 
+	ggplot(aes(x = runname)) + 
+	geom_boxplot(width = 0.4,
+							 stat = "identity",
+							 aes(ymin   = ERC_PV_q10,
+							 	 	lower   = ERC_PV_q25,
+							 		middle  = ERC_PV_q50,
+							 		upper   = ERC_PV_q75,
+							 		ymax    = ERC_PV_q90)) + 
+	geom_hline(yintercept =
+						 filter(df_PVC_qtiles_plot, runname == "baseline") %>% pull(ERC_PV_q50),
+						 linetype = 2) +
+  geom_vline(xintercept = c(1.5, 5.5), linetype = 3, color = "grey60", size = 1) + 	
+  annotate("text", x = 3.5, y = 175, label = "Policies with modest adjustments to \ndefined-benefit plans") + 
+  annotate("text", x = 8.2, y = 175, label = "More-complex \nrisk-sharing policies")	+
+	
+  coord_cartesian(ylim = c(0, 180)) + 
+	scale_y_continuous(breaks = seq(0, 300, 20)) + 
+	labs(title = fig_title,
+			 subtitle = NULL,# fig_subtitle,
+			 x = NULL, 
+			 y = "Present value of ERC") 
+ 
+fig_dist_pvERC_y15_all
+save_figure(fig_dist_pvERC_y15_all, dir_outputs, w = 11, h = 7, scale = 0.85)
+
+
+```
+
+
+## Distribution of max ERC increase
+```{r}
+
+df_ERCvol_qtiles_plot <- df_ERCMaxChg_15y$ERCMaxChg_qtile
+#nyear <- 15
+
+fig_title    <- paste0("Distributions of maximum increase in employer contribution rate in 5 years\n(15-year) period")
+fig_dist_ERCvol_y15 <- 
+  df_ERCvol_qtiles_plot %>% 
+  filter(runname %in% names(runnames_ERC)) %>% 
+	mutate(runname = factor(runname, levels = names(runnames_ERC), 
+													         labels = runnames_ERC)) %>% 
+	ggplot(aes(x = runname)) + 
+	geom_boxplot(width = 0.4,
+							 stat = "identity",
+							 aes(ymin   = ERC_PR_chg5yMax_q10,
+							 	 	lower   = ERC_PR_chg5yMax_q25,
+							 		middle  = ERC_PR_chg5yMax_q50,
+							 		upper   = ERC_PR_chg5yMax_q75,
+							 		ymax    = ERC_PR_chg5yMax_q90)) + 
+	# geom_hline(yintercept =
+	# 					 filter(df_PVC_qtiles_plot, runname == "baseline") %>% pull(ERC_PV_q50),
+	# 					 linetype = 2) +
+  geom_vline(xintercept = c(1.5, 5.5), linetype = 3, color = "grey60", size = 1) + 	
+  annotate("text", x = 3.5, y = 0.18, label = "Policies with modest adjustments to \ndefined-benefit plans") + 
+  
+	annotate("text", x = 8, y = 0.18, label = "More-complex \nrisk-sharing policies")	+
+	
+  # coord_cartesian(ylim = c(0, 180)) + 
+	scale_y_continuous(breaks = seq(0, 1, 0.05), labels =  function(x) percent(x, accuracy = 1)) + 
+	labs(title = fig_title,
+			 subtitle = NULL,# fig_subtitle,
+			 x = NULL, 
+			 y = "Increase in ERC as a percentage of payroll") 
+ 
+fig_dist_ERCvol_y15
+save_figure(fig_dist_ERCvol_y15, dir_outputs, w = 11, h = 7, scale = 0.85)
+
+
+
+fig_title    <- paste0("Maximum 5-year increase in employer contribution rate over 15 years\n(75th percentile)")
+fig_dist_ERCvol_y15_barplot <- 
+  df_ERCvol_qtiles_plot %>% 
+  filter(runname %in% names(runnames_ERC)) %>% 
+	mutate(runname = factor(runname, levels = names(runnames_ERC), 
+													         labels = runnames_ERC)) %>% 
+	ggplot(aes(x = runname, y)) + 
+	geom_bar(aes(y = ERC_PR_chg5yMax_q75), 
+					 stat = "identity",
+					 width = 0.5,
+					 fill = RIG.blue) + 
+	geom_hline(yintercept =
+						 filter(df_ERCvol_qtiles_plot, runname == "baseline") %>% pull(ERC_PR_chg5yMax_q75),
+						 linetype = 2) +
+  geom_vline(xintercept = c(1.5, 5.5), linetype = 3, color = "grey60", size = 1) + 	
+  annotate("text", x = 3.5, y = 0.17, label = "Policies with modest adjustments to \ndefined-benefit plans") + 
+  
+	annotate("text", x = 8, y = 0.17, label = "More-complex \nrisk-sharing policies")	+
+	
+  coord_cartesian(ylim = c(0, 0.18)) + 
+	scale_y_continuous(breaks = seq(0, 1, 0.05), labels =  function(x) percent(x, accuracy = 1)) + 
+	labs(title = fig_title,
+			 subtitle = NULL,# fig_subtitle,
+			 x = NULL, 
+			 y = "Increase in ERC as a percentage of payroll") 
+ 
+fig_dist_ERCvol_y15_barplot
+save_figure(fig_dist_ERCvol_y15_barplot, dir_outputs, w = 11, h = 7, scale = 0.85)
+
+```
+
+
+## Distribution of 40-year COLA
+
+```{r}
+
+
+runnames_colaDist <- c(
+	baseline                 = "Baseline",
+		
+	cola_returnSmooth_calib2  = "Contingent COLA:\n5-year return",
+	cola_FR_calib            = "Contingent COLA:\nfunded ratio\nYear-1 funded ratio 75%",
+	cola_FR_calib_FR100      = "Contingent COLA:\nfunded ratio\nYear-1 funded ratio 100%"
+	
+	#cola_SDRS                = "SDRS-like",
+	#cola_SDRS_FR100          = "SDRS-like \nYear-1 funded ratio 100%"
+	#DA_as                    = "Conditional \nindexation"
+	)
+
+
+
+get_colaDist <- function(df, start_year, span = 40){
+
+# start_year = 1
+# span = 40
+
+year_span <- start_year + seq_len(span) - 1
+
+
+# Distribution of 40-year COLA
+df_cola <- 
+	results_all %>% 
+	filter(year %in% year_span) %>% 
+	# filter(year %in% 16:55) %>% 
+	filter(sim >= 1, runname %in% names(runnames_colaDist) ) %>% 
+	group_by(runname, sim) %>%
+	summarise(runname_wlabel = unique(runname_wlabel),
+						cola_avg  = prod(1 + cola_actual[-n()])^(1/(n() - 1)) - 1)
+
+
+df_cola_qtiles <- 
+	df_cola %>% 
+	summarise(runname_wlabel = unique(runname_wlabel),
+						cola_avg_q10 = quantile(cola_avg, 0.1),
+						cola_avg_q25 = quantile(cola_avg, 0.25),
+						cola_avg_q50 = quantile(cola_avg, 0.50),
+						cola_avg_q75 = quantile(cola_avg, 0.75),
+						cola_avg_q90 = quantile(cola_avg, 0.90)
+						)
+
+fig_title    <- "Distributions of 40-year compound annual COLA \nunder different COLA policies"
+fig_subtitle <- paste0("For members who retire in year ", start_year)
+fig_cola_qtiles_calib <- 
+	df_cola_qtiles %>% 
+	mutate(runname = factor(runname, levels = names(runnames_colaDist) ,
+													         labels = runnames_colaDist)) %>% 
+	ggplot(aes(x = runname)) + 
+	geom_boxplot(width = 0.3,
+							 stat = "identity",
+							 aes(ymin   = cola_avg_q10,
+							 		lower  = cola_avg_q25,
+							 		middle = cola_avg_q50,
+							 		upper  = cola_avg_q75,
+							 		ymax   = cola_avg_q90)
+	) + 
+	geom_hline(yintercept =
+						 filter(df_cola_qtiles, runname == "baseline") %>% pull(cola_avg_q50),
+						 linetype = 2) +
+	coord_cartesian(ylim = c(0, 0.025)) + 
+	scale_y_continuous(breaks = seq(0, 1, 0.005), labels = function(x) percent(x, accuracy = 0.1)) + 
+	labs(title = fig_title,
+			 subtitle = fig_subtitle,
+			 x = NULL, 
+			 y = "Compound annual COLA")
+fig_cola_qtiles_calib
+
+list(
+	df_qtiles = df_cola_qtiles,
+	fig = fig_cola_qtiles_calib
+)
+
+}
+
+
+fig_colaDist <- get_colaDist(results_all, start_year = 1)
+fig_colaDist$fig
+
+save_figure(fig_colaDist$fig, dir_outputs, w = 11, h = 7, scale = 0.8)
+
+
+```
+
+
+## Distribution of pv benefit
+```{r}
+
+
+runnames_pvB <- c(
+	baseline                 = "Baseline",
+		
+	cola_returnSmooth_calib2  = "Contingent COLA:\n5-year return",
+	cola_FR_calib            = "Contingent COLA:\nfunded ratio\nYear-1 funded ratio 75%",
+	cola_FR_calib_FR100      = "Contingent COLA:\nfunded ratio\nYear-1 funded ratio 100%"
+	
+	#cola_SDRS                = "SDRS-like",
+	#cola_SDRS_FR100          = "SDRS-like \nYear-1 funded ratio 100%"
+	#DA_as                    = "Conditional \nindexation"
+	)
+
+
+fig_title    <- paste0("Distribution of the present value of benefit up to age 85 \nunder different risk-sharing policies")
+fig_subtitle <- "Benefit at age 60 normalized to 100"
+fig_dist_pvB_y26 <- 
+  df_benefit_y26$benefit_qtile%>% 
+  filter(runname %in% names(runnames_pvB)) %>% 
+	mutate(runname = factor(runname, levels = names(runnames_pvB), 
+													         labels = runnames_pvB)) %>% 
+	ggplot(aes(x = runname)) + 
+	geom_boxplot(width = 0.3,
+							 stat = "identity",
+							 aes(ymin   = B_PV_dr_q10,
+							 	 	lower   = B_PV_dr_q25,
+							 		middle  = B_PV_dr_q50,
+							 		upper   = B_PV_dr_q75,
+							 		ymax    = B_PV_dr_q90)) + 
+	# geom_hline(yintercept =
+	# 					 filter(df_PVC_qtiles_plot, runname == "baseline") %>% pull(ERC_PV_q50),
+	# 					 linetype = 2) +
+  # geom_vline(xintercept = c(1.5, 5.5), linetype = 3, color = "grey60", size = 1) + 	
+#   annotate("text", x = 3.5, y = 0.18, label = "Policies with modest adjustments to \ndefined-benefit plans") + 
+#   
+# 	annotate("text", x = 8, y = 0.18, label = "More-complex \nrisk-sharing policies")	+
+	
+  coord_cartesian(ylim = c(1200, 1550)) + 
+	scale_y_continuous(breaks = seq(0, 5000, 100), labels = comma) + 
+	labs(title = fig_title,
+			 subtitle = fig_subtitle,# fig_subtitle,
+			 x = NULL, 
+			 y = "Present value of benefit") 
+ 
+fig_dist_pvB_y26
+save_figure(fig_dist_pvB_y26, dir_outputs, w = 11, h = 7, scale = 0.8)
+
+
+		
+
+
+```
+
+
+## Asset shock: ERC rate
+```{r eval=FALSE}
+
+## Deterministic asset shock scenarios:
+
+# sim -1: starting FR = 100%
+# sim -2: starting FR = 75%
+
+df_assetShock <- 
+	results_all %>% 
+	filter(sim < 0)
+
+
+runnames_shock <- c(
+   	baseline                 = "Baseline",
+		
+		cola_returnSmooth_calib2     = "Contingent COLA:\n5-year return",
+		# cola_returnSmooth_calib2_s10 = "Contingent COLA:\n10-year return",
+		cola_FR_calib                = "Contingent COLA:\nfunded ratio",
+		
+		EEC_returnSmooth         = "Contingent EEC:\n5-year return",
+		# EEC_FR                   = "Contingent EEC:\nfunded ratio threshold 85%",
+		EEC_FR_t100              = "Contingent EEC:\nfunded ratio",
+		
+		EEC_sharedADCcap         = "shared ADC\n 10% EEC cap",  
+		EEC_sharedADC            = "shared ADC\n no EEC cap"
+		
+		#hybrid_DB                = "Hybrid \nDB-DC",
+		#hybrid_DB_noLegacy       = "Hybrid \nDB-DC",
+		#cola_SDRS                = "SDRS-like"
+		#DA_as                    = "Conditional \nindexation"
+)
+
+
+df_assetShock_plot <- 
+  df_assetShock %>% 
+	filter(sim == -2, year <=15, runname %in% names(runnames_shock)) %>% # sim -2: 75% starting FR
+	mutate(SC_PR = SC / PR) %>% 
+	select(runname, sim, year,ERC, ERC_PR, FR_MA, NC_PR, EEC_PR, SC_PR, cola_actual) %>% 
+	mutate(runname = factor(runname, names(runnames_shock)),
+				 runname_label = factor(runname, labels = runnames_shock))
+
+# df_assetShock_plot
+
+
+## ERC plot for policy guidebook
+
+
+# Plotting ERC rate  
+
+colors_plot <- brewer_pal(type = "qual", palette = "Paired")(8)
+
+fig_title <- "Employer contribution rates after the asset shock\nunder different risk-sharing policies"
+
+fig_shock_ERCpaper <- 
+  df_assetShock_plot %>% 
+	filter(year <= 15,
+				 runname %in% names(runnames_shock)[(1:8)]) %>% 
+	mutate(Alpha = ifelse(runname %in% runnames_shock[(1)], 1, 0)) %>% 
+	ggplot(aes(x = year, y = ERC_PR, color = runname_label)) +
+	geom_line(size = 1) + 
+	geom_point(size = 2) + 
+	annotate("rect", xmin = 2, xmax = 3, ymin = -1, ymax = 1, fill = "red", size = 0, alpha = 0.1) +
+	annotate("rect", xmin = 3, xmax = 6, ymin = -1, ymax = 1, fill = "yellow", size = 0, alpha = 0.1) +
+	annotate("text", x = 2.5, y = 0.29, label = "Asset\nshock\n(-24%)", color = "grey40") +
+	annotate("text", x = 4.5, y = 0.29, label = "Recovery\n(12% annually)", color = "grey40") +
+	annotate("text", x = 11, y = 0.29, label = "Post-recovery\n(7.5% annually)", color = "grey40") +
+  coord_cartesian(ylim = c(0, 0.3))	+
+	scale_x_continuous(breaks = seq(0, 100, 1)) +
+	scale_y_continuous(breaks = seq(0, 1, 0.05), labels = function(x) percent(x, accuracy = 1)) +
+	scale_color_manual(values = c("black", brewer_pal(type = "qual", palette = "Paired")(8) )) +
+  scale_alpha_continuous(range = c(0.15,1), guide = FALSE) +
+	labs(title = fig_title,
+		   x = "Year",
+			 y = "Employer contribution rate",
+			 color = "Policy") +
+  guides(color = guide_legend(keywidth = 1.5, keyheight = 2.5),
+				 shape = guide_legend(keywidth = 1.5, keyheight = 2.5)
+				 )
+fig_shock_ERCpaper
+
+
+save_figure(fig_shock_ERCpaper, fig_folder = dir_outputs, scale = 0.95, w = 10, h = 6, dpi =400)
+```
+
+
+## Asset shock: real benefit
+
+```{r eval=FALSE}
+
+
+load("Inputs/riskShaing_demographics_100y.RData")
+
+
+runnames_shock_ben <- c(
+   	baseline                 = "Baseline",
+		
+		cola_returnSmooth_calib2     = "Contingent COLA:\n5-year return",
+		# cola_returnSmooth_calib2_s10 = "Contingent COLA:\n10-year return",
+		cola_FR_calib                = "Contingent COLA:\nfunded ratio"
+		
+		#cola_FR_calib_FR100          = "Contingent\nCOLA:\nfunded ratio\n 100%"
+		
+		#EEC_returnSmooth         = "Contingent\nEEC:\n5-year return",
+		# EEC_FR                   = "Contingent EEC:\nfunded ratio threshold 85%",
+		#EEC_FR_t100              = "Contingent\nEEC:\nfunded ratio",
+		
+		#EEC_sharedADCcap         = "shared ADC\n 10% EEC cap",  
+		#EEC_sharedADC            = "shared ADC\n no EEC cap"
+		
+		#hybrid_DB                = "Hybrid \nDB-DC",
+		#hybrid_DB_noLegacy       = "Hybrid \nDB-DC",
+		#cola_SDRS                = "SDRS-like"
+		#DA_as                    = "Conditional \nindexation"
+)
+
+infl
+
+df_benefit_det <- 
+	results_all %>% 
+	filter(sim == -2, year %in% 1:41) %>% 
+	select(runname, policy_type, sim, year, cola_actual) %>% 
+	group_by(runname, sim) %>% 
+	mutate(age = 60:100) %>% 
+	mutate(
+				 B       = 100 * ifelse(age == 60, 1, lag(cumprod(1+cola_actual))),
+				 B_real  = B / (1 + infl)^(age - 60)
+				 ) %>% 
+	filter(runname %in% names(runnames_shock_ben), year <= 15) %>% 
+	ungroup() %>% 
+	mutate(runname = factor(runname, levels = names(runnames_shock_ben)),
+				 runname_label = factor(runname, labels = runnames_shock_ben))
+
+
+
+fig_title <- "Inflation-adjusted annual benefits after the asset shock\nunder different risk-sharing policies"
+fig_subtitle <- "Benefit in year 1 = 100"
+
+fig_shock_realB <- 
+df_benefit_det %>% 
+	filter(runname %in% names(runnames_shock_ben)[1:4]) %>% 
+	ggplot(aes(x = year, y = B_real, color = runname_label)) +
+	geom_line(size = 1) + 
+	geom_point(size = 2) + 
+	annotate("rect", xmin = 2, xmax = 3, ymin = -Inf, ymax = Inf, fill = "red", size = 0, alpha = 0.1) +
+	annotate("rect", xmin = 3, xmax = 6, ymin = -Inf, ymax = Inf, fill = "yellow", size = 0, alpha = 0.1) +
+	annotate("text", x = 2.5, y = 105, label = "Asset\nshock\n(-24%)", color = "grey40") +
+	annotate("text", x = 4.5, y = 105, label = "Recovery\n(12% annually)", color = "grey40") +
+  annotate("text", x = 11, y = 105, label = "Post-recovery\n(7.5% annually)", color = "grey40") +
+	coord_cartesian(ylim = c(60, 107))	+
+	scale_x_continuous(breaks = seq(0, 100, 1)) + 
+	scale_y_continuous(breaks = seq(0, 200, 10)) +
+	scale_color_manual(values = c("black", brewer_pal(type = "qual", palette = "Paired")(4) ))+
+  scale_alpha_continuous(range = c(0.1,1), guide = FALSE) + 
+	labs(title = fig_title,
+			 subtitle = fig_subtitle,
+		   x = "Year",
+			 y = "Real annual benefit ",
+			 color = "Policy") + 
+  guides(color = guide_legend(keywidth = 1.5, keyheight = 2.5),
+				 shape = guide_legend(keywidth = 1.5, keyheight = 2.5)
+				 )
+	
+fig_shock_realB
+save_figure(fig_shock_realB, fig_folder = dir_outputs, scale = 0.95, w = 10, h = 6, dpi =400)
+
+
+
+
+```
+
+
 
 
 
