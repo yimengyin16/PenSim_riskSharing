@@ -392,14 +392,14 @@ df_DA_act <-
 	bind_rows(
 		results_all %>%
 			filter(runname %in% c("DA_as"), sim %in% c(-2, 0)) %>%
-			select(runname, sim, year, ben_idx_act = ben_idx),
+			select(runname, sim, year, ben_idx_act),
 		
 		results_all %>%
 			filter(runname %in% c("DA_as_none"), sim %in% c(0)) %>%
 			select(runname, sim, year, ben_idx_act)
 	)
 
-df_DA_act %<>% 
+df_DA_act %>% 
 	mutate(type = paste0(runname, sim)) %>% 
 	select(type, year, ben_idx_act) %>% 
 	spread(type, ben_idx_act) %>% 
@@ -2250,6 +2250,45 @@ fig_dist_pvB_y26
 save_figure(fig_dist_pvB_y26, dir_outputs, w = 11, h = 7, scale = 0.8)
 
 
+
+fig_title    <- paste0("Distribution of the present value of benefit up to age 85 \nunder different risk-sharing policies")
+fig_subtitle <- "The present value under Baseline is normalized to 100"
+
+
+B_PV_std <- df_benefit_y26$benefit_qtile[1, 5] %>% unlist
+
+fig_dist_pvB_y26_std <- 
+  df_benefit_y26$benefit_qtile%>% 
+  filter(runname %in% names(runnames_pvB)) %>% 
+	mutate(runname = factor(runname, levels = names(runnames_pvB), 
+													         labels = runnames_pvB)) %>% 
+	mutate(across(c(-runname, -runname_wlabel), ~.x / B_PV_std * 100) ) %>% 
+	ggplot(aes(x = runname)) + 
+	geom_boxplot(width = 0.3,
+							 stat = "identity",
+							 aes(ymin   = B_PV_dr_q10,
+							 	 	lower   = B_PV_dr_q25,
+							 		middle  = B_PV_dr_q50,
+							 		upper   = B_PV_dr_q75,
+							 		ymax    = B_PV_dr_q90)) + 
+	# geom_hline(yintercept =
+	# 					 filter(df_PVC_qtiles_plot, runname == "baseline") %>% pull(ERC_PV_q50),
+	# 					 linetype = 2) +
+  # geom_vline(xintercept = c(1.5, 5.5), linetype = 3, color = "grey60", size = 1) + 	
+#   annotate("text", x = 3.5, y = 0.18, label = "Policies with modest adjustments to \ndefined-benefit plans") + 
+#   
+# 	annotate("text", x = 8, y = 0.18, label = "More-complex \nrisk-sharing policies")	+
+	
+  coord_cartesian(ylim = c(85, 110)) + 
+	scale_y_continuous(breaks = seq(0, 500, 5)) + 
+	labs(title = fig_title,
+			 subtitle = fig_subtitle,# fig_subtitle,
+			 x = NULL, 
+			 y = "Present value of benefit") 
+ 
+fig_dist_pvB_y26_std
+save_figure(fig_dist_pvB_y26_std, dir_outputs, w = 11, h = 7, scale = 0.8)
+
 		
 
 
@@ -2292,13 +2331,20 @@ runnames_shock <- c(
 
 df_assetShock_plot <- 
   df_assetShock %>% 
-	filter(sim == -2, year <=15, runname %in% names(runnames_shock)) %>% # sim -2: 75% starting FR
+	filter(sim == -2, year <=20, runname %in% names(runnames_shock)) %>% # sim -2: 75% starting FR
 	mutate(SC_PR = SC / PR) %>% 
 	select(runname, sim, year,ERC, ERC_PR, FR_MA, NC_PR, EEC_PR, SC_PR, cola_actual) %>% 
 	mutate(runname = factor(runname, names(runnames_shock)),
 				 runname_label = factor(runname, labels = runnames_shock))
 
-# df_assetShock_plot
+df_assetShock_plot %>% 
+	filter(runname == "cola_returnSmooth_calib2")
+	
+df_assetShock_plot %>% 
+	filter(runname == "cola_FR_calib")
+
+df_assetShock_plot %>% 
+	filter(runname == "EEC_sharedADC")
 
 
 ## ERC plot for policy guidebook
