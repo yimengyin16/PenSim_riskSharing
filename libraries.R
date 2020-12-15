@@ -91,8 +91,8 @@ get_nyearMin <- function(x) min(x[-1] - x[1])
 									 RIG.yellow.dark)
 	
 	
-	theme_yy <- function(){
-		theme_bw() + 
+	theme_yy <- function(...){
+		theme_bw(...) + 
 		theme(panel.grid.major.x = element_line(size = 0.3, color = "gray90"), #element_blank(),
 					panel.grid.minor.x = element_blank(),
 					panel.grid.minor.y = element_blank(),
