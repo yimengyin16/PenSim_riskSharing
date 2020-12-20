@@ -27,9 +27,10 @@ run_labels_FR75 <- c(
 	mixed_WRS          = "WRS-like",
 	DA                 = "conditional indexation\nno assetSmoothing",
 	DA_as              = "conditional indexation",
-	DA_as_none         = "conditional indexation \n none"
-	# DA_as_act          = "conditional indexation \n actives only",
-	# DA_as_ret          = "conditional indexation \n retirees only"
+	DA_as_none         = "conditional indexation \n none",
+	
+	DA_as_act          = "conditional indexation \n actives only",
+	DA_as_ret          = "conditional indexation \n retirees only"
 	
 	# EEC_sharedNC  = "Contingent EEC: \nshared",
 )

@@ -877,6 +877,12 @@ df_SDRS <-
 
 # Examine the impact of the asset shock on benefit at age 60 for different cohorts
 
+# 
+# -1: assumption met, 75% funded ratio
+# -3: asset shock, 75% funded ratio
+
+load("Inputs/riskShaing_demographics_100y.RData")
+
 bfactor <- 0.025
 
 df_DA_act <-
@@ -927,6 +933,88 @@ df %<>%
 df
 
 xlsx::write.xlsx2(df, file = paste0(dir_outputs, "tbl_detMeasures_FR100.xlsx"), sheetName = "DA_benefit_actives", append = TRUE)
+
+
+
+## Examine the benefit for an active member aged 40 in year 1 
+
+df_DA_act <-
+	bind_rows(
+		results_all %>%
+			filter(runname %in% c("DA_as"), sim %in% c(-3, -1)) %>%
+			select(runname, sim, year, ben_idx_act),
+		
+		results_all %>%
+			filter(runname %in% c("DA_as_ret"), sim %in% c(-3, -1)) %>%
+			select(runname, sim, year, ben_idx_act),
+		
+		results_all %>%
+			filter(runname %in% c("DA_as_none"), sim %in% c(-1)) %>%
+			select(runname, sim, year, ben_idx_act)
+	)
+
+df_DA_act %<>% 
+	mutate(type = paste0(runname, sim)) %>% 
+	select(type, year, ben_idx_act) %>% 
+	spread(type, ben_idx_act) %>% 
+	rename(idx_baseline = "DA_as_none-1",
+				 idx_all_shock = "DA_as-3",
+				 idx_all_met   = "DA_as-1",
+				 idx_ret_shock = "DA_as_ret-3",
+				 idx_ret_met   = "DA_as_ret-1",
+				 )
+
+# extract salary for employees aged 40 and ea = 25 in year 1
+df_sal <-
+	df_actives %>%
+	mutate(start_year = year - (age - ea)) %>%
+	filter(start_year == -14, ea %in% c(25)) %>%
+	select(year, ea, age, sx) %>%
+	arrange(ea, age)
+	#left_join(df_DA_act, by = "year")
+
+# need to supplement the df with salary before age 40
+sal_scale <- 
+df_actives %>%
+	mutate(start_year = year - (age - ea)) %>%
+	filter(start_year == 1, ea %in% c(25)) %>% 
+	mutate(sal_scale = sx/lag(sx) - 1,
+				 sal_scale = lead(sal_scale),
+				 sal_fct   = lag(cumprod(1+sal_scale), default = 1)) %>% 
+	select(ea, age, sal_scale, sal_fct)
+
+
+df_act <- 
+	left_join(sal_scale, df_sal) %>% 
+	mutate(sx = (sx/sal_fct)[age == 40] * sal_fct) %>% 
+	left_join(df_DA_act, by = "year") %>% 
+	mutate(across( starts_with("idx"), ~ ifelse(age<40, 0.02, .)))
+
+df_act %>% 
+	select(ea, age, sx, starts_with("idx")) %>% 
+	gather(type, idx, -age, -sx, -ea) %>% 
+	select(ea, type, age, sx, idx) %>% 
+	arrange(ea, type)
+
+
+
+
+df_act %>% 
+	gather(type, idx, -year, -ea, -age, -sx) %>% 
+	select(ea, type, year, age, sx, idx) %>% 
+	arrange(ea, type) %>% 
+	group_by(ea, type) %>% 
+	filter(age < 60) %>% 
+	mutate(sx_adj = sx * order_by(-year, cumprod(1+idx))) %>% 
+	summarise(ben_age60 = sum(sx_adj * bfactor)) %>% 
+	spread(type, ben_age60) %>% 
+	mutate(impact_all_tot  = (idx_all_shock - idx_baseline)/idx_baseline,
+				 impact_ret_tot  = (idx_ret_shock - idx_baseline)/idx_baseline
+				 # impact_cost = (idx_met - idx_baseline)/idx_baseline,
+				 # impact_risk = impact_tot - impact_cost
+				 )
+
+
 
 ```
 
