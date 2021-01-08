@@ -420,6 +420,7 @@ fig5_dist_pvERC_y15_all <-
   filter(runname %in% names(runnames_ERC)) %>% 
 	mutate(runname = factor(runname, levels = names(runnames_ERC), 
 													         labels = runnames_ERC)) %>% 
+	filter(runname != "SDRS-like") %>% 
 	ggplot(aes(x = runname)) + 
 	geom_boxplot(width = 0.4,
 							 stat = "identity",
@@ -433,7 +434,7 @@ fig5_dist_pvERC_y15_all <-
 						 linetype = 2) +
   geom_vline(xintercept = c(1.5, 5.5), linetype = 3, color = "grey60", size = 1) + 	
   annotate("text", x = 3.5, y = 175, label = "Policies with modest adjustments to \ndefined-benefit plans") + 
-  annotate("text", x = 8.2, y = 175, label = "More radical or more-complex\nrisk-sharing policies")	+
+  annotate("text", x = 7.5, y = 175, label = "More-radical or more-complex\nrisk-sharing policies")	+
 	
   coord_cartesian(ylim = c(0, 180)) + 
 	scale_y_continuous(breaks = seq(0, 300, 20)) + 
@@ -473,7 +474,7 @@ fig_dist_ERCvol_y15_barplot <-
   geom_vline(xintercept = c(1.5, 5.5), linetype = 3, color = "grey60", size = 1) + 	
   annotate("text", x = 3.5, y = 0.17, label = "Policies with modest adjustments to \ndefined-benefit plans") + 
   
-	annotate("text", x = 8, y = 0.17, label = "More radical or more-complex\nrisk-sharing policies")	+
+	annotate("text", x = 8, y = 0.17, label = "More-radical or more-complex\nrisk-sharing policies")	+
 	
   coord_cartesian(ylim = c(0, 0.18)) + 
 	scale_y_continuous(breaks = seq(0, 1, 0.05), labels =  function(x) percent(x, accuracy = 1)) + 
@@ -505,7 +506,7 @@ fig6_dist_ERCvol_y15_barplot2 <-
   geom_vline(xintercept = c(1.5, 5.5), linetype = 3, color = "grey60", size = 1) + 	
   annotate("text", x = 3.5, y = 0.17, label = "Policies with modest adjustments to \ndefined-benefit plans") + 
   
-	annotate("text", x = 8, y = 0.17, label = "More radical or more-complex\nrisk-sharing policies")	+
+	annotate("text", x = 8, y = 0.17, label = "More-radical or more-complex\nrisk-sharing policies")	+
 	
   coord_cartesian(ylim = c(0, 0.18)) + 
 	scale_y_continuous(breaks = seq(0, 1, 0.05), labels =  function(x) percent(x, accuracy = 1)) + 
@@ -764,7 +765,7 @@ fig9_dist_pvEEC_y15_all <-
 						 linetype = 2) +
   geom_vline(xintercept = c(1.5, 3.5), linetype = 3, color = "grey60", size = 1) + 	
   annotate("text", x = 2.5, y = 315, label = "Policies with \nmodest adjustments to \ndefined-benefit plans") + 
-  annotate("text", x = 4.5, y = 315, label = "More radical or more-complex\nrisk-sharing policies")	+
+  annotate("text", x = 4.5, y = 315, label = "More-radical or more-complex\nrisk-sharing policies")	+
 	
   coord_cartesian(ylim = c(0, 330)) + 
 	scale_y_continuous(breaks = seq(0, 500, 50)) + 
@@ -806,7 +807,7 @@ fig_dist_EECvol_y15_barplot <-
   geom_vline(xintercept = c(1.5, 3.5), linetype = 3, color = "grey60", size = 1) + 	
   annotate("text", x = 2.5, y = 0.17, label = "Policies with \nmodest adjustments to \ndefined-benefit plans") + 
   
-	annotate("text", x = 5, y = 0.17, label = "More radical and more-complex \nrisk-sharing policies")	+
+	annotate("text", x = 5, y = 0.17, label = "More-radical and more-complex \nrisk-sharing policies")	+
 	
   coord_cartesian(ylim = c(0, 0.18)) + 
 	scale_y_continuous(breaks = seq(0, 1, 0.05), labels =  function(x) percent(x, accuracy = 1)) + 
@@ -838,9 +839,9 @@ fig10_dist_EECvol_y15_barplot2 <-
 
 
   geom_vline(xintercept = c(1.5, 3.5), linetype = 3, color = "grey60", size = 1) + 	
-  annotate("text", x = 2.5, y = 0.17, label = "Policies with \nmodest adjustments to \ndefined-benefit plans") + 
+  annotate("text", x = 2.5, y = 0.072, label = "Policies with \nmodest adjustments to \ndefined-benefit plans") + 
   
-	annotate("text", x = 5, y = 0.17, label = "More radical and more-complex \nrisk-sharing policies")	+
+	annotate("text", x = 4.5, y = 0.072, label = "More-radical and more-complex \nrisk-sharing policies")	+
 	
   coord_cartesian(ylim = c(0, 0.08)) + 
 	scale_y_continuous(breaks = seq(0, 1, 0.02), labels =  function(x) percent(x, accuracy = 1)) + 
@@ -1064,8 +1065,6 @@ fig4_shock_EECpaper
 
 save_figure(fig4_shock_EECpaper, fig_folder = dir_outputs, scale = 0.95, w = 10, h = 6, dpi =400)
 ```
-
-
 
 
 
