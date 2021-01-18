@@ -506,7 +506,7 @@ fig6_dist_ERCvol_y15_barplot2 <-
   geom_vline(xintercept = c(1.5, 5.5), linetype = 3, color = "grey60", size = 1) + 	
   annotate("text", x = 3.5, y = 0.17, label = "Policies with modest adjustments to \ndefined-benefit plans") + 
   
-	annotate("text", x = 8, y = 0.17, label = "More-radical or more-complex\nrisk-sharing policies")	+
+	annotate("text", x = 7.5, y = 0.17, label = "More-radical or more-complex\nrisk-sharing policies")	+
 	
   coord_cartesian(ylim = c(0, 0.18)) + 
 	scale_y_continuous(breaks = seq(0, 1, 0.05), labels =  function(x) percent(x, accuracy = 1)) + 
