@@ -44,6 +44,7 @@ run_labels_FR100 <- c(
 	cola_return_FR100   = "Contingent COLA: \nreturn\nYear-1 funded ratio 100%",
 	
 	cola_returnSmooth_calib_FR100 = "Contingent COLA: \nreturn smoothed\ncalib FR 100%",
+	cola_returnSmooth_calib2_FR100 = "Contingent COLA: \nreturn smoothed\ncalib FR 100%",
 	
 	cola_FR_FR100       = "Contingent COLA: \nFunded ratio threshold\nYear-1 funded ratio 100%",
 	cola_FR_calib_FR100 = "Contingent COLA: \nFunded ratio threshold\nYear-1 funded ratio 100%\ncalib",
