@@ -925,9 +925,13 @@ df_retirees %>%
 
 	mutate(PVB_DB = 50 * AL_ret / B_ret[age == 60],
 				 B_DB   = 50 * B_ret / B_ret[age == 60],
-				 DC_balance = ifelse(year == 1, PVB_DB, 0),
-				 B_DC = ifelse(year == 1, DC_balance * withdrawalRate, 0)) %>% 
-	select(year, age, ax.r, PVB_DB, B_DB, DC_balance, B_DC) 
+				 
+				 DC_balance_highR = ifelse(year == 1, PVB_DB, 0),
+				 B_DC_highR = ifelse(year == 1, DC_balance_highR * withdrawalRate, 0),
+				 
+				 DC_balance_lowR = ifelse(year == 1, PVB_DB, 0),
+				 B_DC_lowR = ifelse(year == 1, DC_balance_lowR * withdrawalRate, 0)) %>% 
+	select(year, age, ax.r, PVB_DB, B_DB, DC_balance_highR, B_DC_highR, DC_balance_lowR, B_DC_lowR) 
 
 
 df_hybrid <- 
@@ -941,8 +945,12 @@ df_hybrid
 
 fn <- function(df){
   for(j in 2:41){
-	  df$DC_balance[j] <- with(df, (DC_balance[j - 1] - B_DC[j - 1]) * (1 + i.r[j - 1]))
-	  df$B_DC[j] <-  with(df, DC_balance[j] * withdrawalRate )
+	  df$DC_balance_highR[j] <- with(df, (DC_balance_highR[j - 1] - B_DC_highR[j - 1]) * (1 + i.r[j - 1]))
+	  df$B_DC_highR[j] <- with(df, DC_balance_highR[j] * withdrawalRate)
+	  
+	 	df$DC_balance_lowR[j] <- with(df, (DC_balance_lowR[j - 1] - B_DC_lowR[j - 1]) * (1 + 0.5 * i.r[j - 1]))
+	  df$B_DC_lowR[j] <- with(df, DC_balance_lowR[j] * withdrawalRate)
+	  
   }
 df	
 }
@@ -951,11 +959,31 @@ df_hybrid <- map(split(df_hybrid, df_hybrid$sim), fn) %>% bind_rows()
 #df_hybrid2 %>% filter(sim == 20)
 
 
+
+
+df_hybrid_temp_highR <- 
+	results_all %>% 
+	filter(str_detect(runname, "hybrid")) %>% 
+	left_join(select(df_hybrid, sim, year, B_DC = B_DC_highR, DC_balance = B_DC_highR), by = c("sim", "year")) %>% 
+	mutate(runname = paste0(runname, "_highR"))
+
+df_hybrid_temp_lowR <- 
+	results_all %>% 
+	filter(str_detect(runname, "hybrid")) %>% 
+	left_join(select(df_hybrid, sim, year, B_DC = B_DC_lowR, DC_balance = B_DC_lowR), by = c("sim", "year")) %>% 
+	mutate(runname = paste0(runname, "_lowR"))
+
+
+
 results_all %<>% 
-	left_join(select(df_hybrid, sim, year, B_DC, DC_balance), by = c("sim", "year")) %>% 
-	mutate(B_DC = ifelse(str_detect(runname, "hybrid"), B_DC, 0),
-				 DC_balance = ifelse(str_detect(runname, "hybrid"), DC_balance, 0)
-				 )
+		# filter(!str_detect(runname, "hybrid")) %>% 
+	  bind_rows(df_hybrid_temp_highR) %>% 
+	  bind_rows(df_hybrid_temp_lowR) %>% 
+	  mutate(B_DC       = ifelse(str_detect(runname, "hybrid")&str_detect(runname, "highR|lowR"), B_DC, 0),
+		  		 DC_balance = ifelse(str_detect(runname, "hybrid")&str_detect(runname, "highR|lowR"), DC_balance, 0)
+			  	 )
+
+
 
 
 # results_all %>% 
@@ -1045,6 +1073,9 @@ df_benefit <-
 				 )
 
 
+df_benefit %>% 
+	filter(runname == "hybrid_DB")
+
 df_benefit_qtile <- 
 	df_benefit %>%
 	filter(sim >= 1) %>% 
@@ -1119,7 +1150,9 @@ runnames_benefit  <- c(
 		cola_FR_calib            = "Contingent COLA:\nfunded ratio\nYear-1 funded ratio 75%",
 	  cola_FR_calib_FR100      = "Contingent COLA:\nfunded ratio\nYear-1 funded ratio 100%",
 		
-		hybrid_DB_noLegacy       = "Hybrid\nDB-DC"
+		#hybrid_DB_noLegacy       = "Hybrid\nDB-DC"
+		hybrid_DB_noLegacy_highR       = "Hybrid\nDB-DC: high return",
+		hybrid_DB_noLegacy_lowR       = "Hybrid\nDB-DC: low return"
 	)
 
 
@@ -1408,7 +1441,11 @@ runnames_benefit  <- c(
 		
 		cola_FR_calib            = "Contingent COLA:\nfunded ratio\nYear-1 funded ratio 75%",
 	  cola_FR_calib_FR100      = "Contingent COLA:\nfunded ratio\nYear-1 funded ratio 100%",
-		hybrid_DB_noLegacy       = "Hybrid\nDB-DC"
+		
+		hybrid_DB_noLegacy_highR       = "Hybrid\nDB-DC: high return",
+		hybrid_DB_noLegacy_lowR       = "Hybrid\nDB-DC: low return"
+		
+		# hybrid_DB_noLegacy       = "Hybrid\nDB-DC"
 	)
 
 df_benefit <- df_benefit_y30
@@ -1473,7 +1510,7 @@ df_low_pvB %>%
   # kable(digits = 1, caption = "Median percentage difference from baseline by return group (%)", format = "pandoc")
   gt(rowname_col = c("Measure")) %>% 
 	fmt_percent(
-    columns = 2:5,
+    columns = 2:6,
     decimals = 1) %>% 
 	tab_header(
     title = html("Probability of present value of benefit below 90%, 95%, and 100% of the level in baseline"), 
@@ -1534,7 +1571,7 @@ tbl_B_real_probLow <-
   # kable(digits = 1, caption = "Median percentage difference from baseline by return group (%)", format = "pandoc")
   gt(rowname_col = c("year")) %>% 
 	fmt_percent(
-    columns = 2:6,
+    columns = 2:7,
     decimals = 1) %>% 
 	tab_header(
     title = html("Probability of real benefit falling below 90% of starting benefit<br>in any year up to year 15 or 30"),

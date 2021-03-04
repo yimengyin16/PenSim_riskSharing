@@ -14,6 +14,8 @@ editor_options:
 ## Loading packages
 source(here::here("libraries.R"))
 
+
+
 theme_set(theme_yy())
 
 dir_modelResults <- paste0(here::here(),"/Outputs/")
@@ -444,6 +446,9 @@ fig5_dist_pvERC_y15_all <-
 			 y = "Present value of ERC") 
  
 fig5_dist_pvERC_y15_all
+
+xlsx::write.xlsx2(fig5_dist_pvERC_y15_all$data, file = paste0(dir_outputs, "data_fig5_dist.pvERC.xlsx"))
+
 save_figure(fig5_dist_pvERC_y15_all, dir_outputs, w = 11, h = 7, scale = 0.85)
 
 
