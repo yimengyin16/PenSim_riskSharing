@@ -12,8 +12,12 @@ source("libraries.R")
 
 
 ## Setting folder paths
-#dir_Outputs <- "Outputs_500sims/"
-dir_Outputs <- "Outputs/"
+# dir_Outputs <- "Outputs_500sims/"
+# dir_Outputs <- "Outputs/"
+
+dir_Outputs <- "Outputs_sensitivity/highVol/"
+# dir_Outputs <- "Outputs/sensitivity/lowVol/"
+
 
 #******************************************************************************* 
 #                          ## Notes on contingent COLA
@@ -58,11 +62,12 @@ dir_Outputs <- "Outputs/"
 #                         # Model Parameters  ####
 #*******************************************************************************
 folder_run <- "."
-filename_RunControl <- dir(folder_run, pattern = "^RunControl.")
+filename_RunControl <- dir(folder_run, pattern = "^RunControl_sensitivity")
 path_RunControl <- paste0(folder_run, "/" ,filename_RunControl)
 
 # Import global parameters
-runList <- read_excel(path_RunControl, sheet="paramlist", skip  = 1) %>% filter(!is.na(runname), include == TRUE)
+runList <- read_excel(path_RunControl, sheet="paramlist_highVol", skip  = 1) %>% filter(!is.na(runname), include == TRUE)
+# runList <- read_excel(path_RunControl, sheet="paramlist_lowVol", skip  = 1) %>% filter(!is.na(runname), include == TRUE)
 runList
 
 # # Import return scenarios
