@@ -411,7 +411,7 @@ tbl_ERC_PV_med <-
 by long-term return quintile")
   ) %>% 
 	cols_label(
-		grp_CAGR     = "Return quinitle",
+		grp_CAGR     = "Return quintile",
 		Return_Range = "Range of 30-year compound returns" 
 	) %>% 
 	
@@ -908,7 +908,7 @@ tab_ERC_vol_gt <-
     subtitle = "(Median values within return quintiles)"
     ) %>% 
 	cols_label(
-		grp_CAGR     = "Return quinitle",
+		grp_CAGR     = "Return quintile",
 		Return_Range = "Range of 30-year compound returns" 
 	) %>% 
 	
@@ -1206,7 +1206,7 @@ tbl_EEC_PV_med <-
 by long-term return quintile")
   ) %>% 
 	cols_label(
-		grp_CAGR     = "Return quinitle",
+		grp_CAGR     = "Return quintile",
 		Return_Range = "Range of 30-year compound returns" 
 	) %>% 
 	
@@ -1478,7 +1478,7 @@ tab_EEC_vol_gt <-
     subtitle = "(Median values within return quintiles)"
     ) %>% 
 	cols_label(
-		grp_CAGR     = "Return quinitle",
+		grp_CAGR     = "Return quintile",
 		Return_Range = "Range of 30-year compound returns" 
 	) %>% 
 	
@@ -1670,42 +1670,6 @@ results_all %<>%
 
 
 
-
-# results_all %>% 
-# 	filter(str_detect(runname, "hybrid"))
-# # 
-# df_DC_met_sum <- 
-#   df_DC_met %>%
-# 	filter(age <= 85) %>% 
-# 	summarise(B_DB_PV_26y = sum(B_DB / (1 + dr)^(year - 1)),
-# 						B_DC_PV_26y = sum(B_DC / (1 + dr)^(year - 1)) + DC_balance[age == 85]/ (1 + dr)^(26 - 1),
-# 						) %>% 
-# 	mutate(B_cohort_PV_26y = B_DB_PV_26y + B_DC_PV_26y)
-# 
-# df_DC_shock_sum <- 
-#   df_DC_shock %>%
-# 	filter(age <= 85) %>% 
-# 	summarise(B_DB_PV_26y = sum(B_DB / (1 + dr)^(year - 1)),
-# 						B_DC_PV_26y = sum(B_DC / (1 + dr)^(year - 1)) + DC_balance[age == 85]/ (1 + dr)^(26 - 1),
-# 						) %>% 
-# 	mutate(B_cohort_PV_26y = B_DB_PV_26y + B_DC_PV_26y)
-# 
-# df_DC_met_low_sum <- 
-#   df_DC_met_low %>%
-# 	filter(age <= 85) %>% 
-# 	summarise(B_DB_PV_26y = sum(B_DB / (1 + dr)^(year - 1)),
-# 						B_DC_PV_26y = sum(B_DC / (1 + dr)^(year - 1)) + DC_balance[age == 85]/ (1 + dr)^(26 - 1),
-# 						) %>% 
-# 	mutate(B_cohort_PV_26y = B_DB_PV_26y + B_DC_PV_26y)
-# 
-# df_DC_shock_low_sum <- 
-#   df_DC_shock_low %>%
-# 	filter(age <= 85) %>% 
-# 	summarise(B_DB_PV_26y = sum(B_DB / (1 + dr)^(year - 1)),
-# 						B_DC_PV_26y = sum(B_DC / (1 + dr)^(year - 1)) + DC_balance[age == 85]/ (1 + dr)^(26 - 1),
-# 						) %>% 
-# 	mutate(B_cohort_PV_26y = B_DB_PV_26y + B_DC_PV_26y)
-
 ```
 
 
@@ -1832,8 +1796,8 @@ runnames_benefit  <- c(
 		cola_returnSmooth_calib2 = "Contingent COLA:\n5-year return",
 		# cola_returnSmooth_calib2_s10 = "Contingent COLA:\n10-year return",
 		
-		cola_FR_calib            = "Contingent COLA:\nfunded ratio\nYear-1 funded ratio 75%",
-	  cola_FR_calib_FR100      = "Contingent COLA:\nfunded ratio\nYear-1 funded ratio 100%",
+		cola_FR_calib            = "Contingent COLA:\nfunded ratio\n(year-1 funded ratio 75%)",
+	  cola_FR_calib_FR100      = "Contingent COLA:\nfunded ratio\n(year-1 funded ratio 100%)",
 		
 		#hybrid_DB_noLegacy       = "Hybrid\nDB-DC"
 		hybrid_DB_noLegacy_highR       = "Hybrid\nDB-DC: high return",
@@ -1842,11 +1806,9 @@ runnames_benefit  <- c(
 
 
 
-# Note: this function only works for members retired in year 1, with a 40-year period
-get_pvB_quintile <- function(df, span){
 
-# df  = df_benefit_y26
-# span = 26
+df  = df_benefit_y30
+span = 30
 	
 df_CAGR <- get_CAGR(results_all, span)	
 	
@@ -1879,29 +1841,179 @@ df_pvB_diff_quintile <-
 						) %>% 
 	left_join(df_CAGR$df, by = "sim") %>% 
 	mutate(
-		     #ERC_PV          = 100 * ERC_PV / df_PVC_sim2sim$baseline[df_PVC_sim2sim$Percentile == "ptile50"],
-				 #ERC_PV_baseline = 100 * ERC_PV_baseline / df_PVC_sim2sim$baseline[df_PVC_sim2sim$Percentile == "ptile50"],
 		     B_PV_diff     = B_PV - B_PV_baseline,
 				 B_PV_diff_pct = 100*( B_PV / B_PV_baseline - 1),
-				 
-				 # B_PV_dr_diff     = B_PV_dr - B_PV_dr_baseline,
-				 # B_PV_dr_diff_pct = 100* (B_PV_dr / B_PV_dr_baseline - 1)
-				 
-				 #B_PV_tot_drLow_diff     = B_PV_tot_drLow - B_PV_tot_drLow_baseline,
-				 #B_PV_tot_drLow_diff_pct = 100*( B_PV_tot_drLow / B_PV_tot_drLow_baseline - 1)
 				 ) %>% 
 	group_by(runname, grp_CAGR) %>% 
 	summarise(B_PV          = fun_sum(B_PV),
 						B_PV_diff     = fun_sum(B_PV_diff),
 						B_PV_diff_pct = fun_sum(B_PV_diff_pct),
 						B_PV          = fun_sum(B_PV)
-						# B_PV_dr          = fun_sum(B_PV_dr),
-						# B_PV_dr_diff     = fun_sum(B_PV_dr_diff),
-						# B_PV_dr_diff_pct = fun_sum(B_PV_dr_diff_pct)
-						
-						# B_PV_tot_drLow          = fun_sum(B_PV_tot_drLow),
-						# B_PV_tot_drLow_diff     = fun_sum(B_PV_tot_drLow_diff),
-						# B_PV_tot_drLow_diff_pct = fun_sum(B_PV_tot_drLow_diff_pct)
+						) %>% 
+  arrange(runname, desc(grp_CAGR))
+
+
+df_tab_pvB <- 
+df_pvB_diff_quintile %>% 
+	filter(runname %in% names(runnames_benefit)) %>% 
+	mutate(runname = factor(runname, levels = names(runnames_benefit),
+													         labels = runnames_benefit)) %>% 
+	select(runname, grp_CAGR, B_PV, B_PV_diff_pct) %>% 
+	ungroup() %>% 
+	gather(Panel, value, -runname, -grp_CAGR) %>% 
+	mutate(Panel = factor(Panel, levels = c("B_PV", "B_PV_diff_pct"),
+										       labels = c("Median present value of benefit over 30 years within quintiles",
+				 								  					 "Percentage difference from Baseline")
+											)) %>% 
+
+	spread(runname, value) %>% 
+	arrange(Panel, grp_CAGR) %>% 
+  # select(-baseline) %>% 
+	# left_join(df_pvB_diff_quintile %>% 
+	# 						filter(runname == "baseline") %>% 
+	# 						ungroup() %>% 
+	#             select(grp_CAGR, B_PV),
+	# 					by = "grp_CAGR"
+	# 					) %>% 
+	mutate(Return_Range = rep(df_CAGR$cutoff, 2) ) %>% 
+	select(Panel, grp_CAGR, Return_Range, everything()) %>% 
+	group_by(Panel)
+
+ncol_tab <- ncol(df_tab_pvB)
+
+# 1. The annual withdrawal rate from the DC balance is assumed to be 7.5%.
+# 2. The present value of DC benefits is calculated as the sum of the present value of annual withdrawals from the DC account over age 60-85 and the present value of the remaining DC balance at the end of age 85.
+
+tab_pvB_quintile_gt <- 
+	df_tab_pvB %>% 
+	gt() %>% 
+		tab_header(
+    title = html("Present value of benefit over 30 years (age 60-89):<br>Percentage differences from baseline by long-term return quintile"),
+    subtitle = "Starting benefits are normalized to $100 for all policies"
+  ) %>% 
+	cols_label(
+		grp_CAGR     = "Return quintile",
+		Return_Range = "Range of 30-year compound returns" 
+	) %>% 
+	
+	# Footnotes
+	
+	 tab_footnote(
+    footnote = 'Annual benefit under the hybrid DB-DC plan is the sum of DB benefit and annual withdrawal from the DC balance. The annual withdrawal rate from the DC balance is assumed to be 7.5%. The present value of DC benefits is calculated as the sum of the present value of annual withdrawals from the DC account over age 60-85 and the present value of the remaining DC balance at the end of age 85. Under the " Hybrid DB-DC: high return" scenario, the DC assets held by retirees has the same returns and losses as the DB portfolio; under the " Hybrid DB-DC: low return" scenario, the DC assets held by retirees has one-half of the DB portfolio\'s returns and losses.',
+    locations = cells_column_labels(
+     c("Hybrid\nDB-DC: high return",  "Hybrid\nDB-DC: low return")
+    )
+ ) %>% 
+	
+	
+	# formatting cells
+	fmt_number(
+		rows = c(1:5),
+		columns = c(4:ncol_tab),
+		decimal = 0
+	) %>% 
+	fmt_percent(
+		rows = c(6:10),
+		columns = c(4:ncol_tab),
+		decimal = 1,
+		scale_values = FALSE
+	) %>% 
+	
+	# Table style
+	tab_style( # panel names
+    style = list(
+      cell_text(style = "italic",
+      					weight = "bold",
+      					align = "center")
+      ),
+    locations = cells_row_groups()
+	 ) %>% 
+	tab_style( # return columns
+    style = list(
+      cell_text(align = "center")
+      ),
+    locations = cells_body(columns = c(2, 3))
+	 ) %>% 
+	tab_style( # table title
+    style = list(
+      cell_text(align = "center",
+      					weight = "bold")
+      ),
+    locations = cells_title(groups = "title")
+	 ) %>% 
+	tab_style( # column names
+    style = list(
+      cell_text(align = "right",
+      					v_align = "middle",
+      					weight = "bold"
+      					)
+      ),
+    locations = cells_column_labels()
+	 ) %>%
+	opt_table_font( # table font
+		font = "Times"
+	) %>% 
+	cols_width( # column width
+    grp_CAGR ~ px(60),
+    Return_Range ~ px(90),
+    4:ncol_tab ~ px(115)
+  )
+
+
+
+
+tab_pvB_quintile_gt 
+gtsave(tab_pvB_quintile_gt , filename = paste0(dir_outputs, "tbl_benefit_PV_med.pdf"))
+
+
+
+
+
+# Note: this function only works for members retired in year 1, with a 40-year period
+get_pvB_quintile <- function(df, span){
+
+#df  = df_benefit_y30
+#span = 30
+	
+df_CAGR <- get_CAGR(results_all, span)	
+	
+fun_sum <- median
+# fun_sum <- mean
+
+# df <- df_benefit_y1
+
+df_benefit_PV <- 
+	df$benefit %>% 
+	summarise(runname_wlabel = unique(runname_wlabel),
+						#B_PV       = sum(B* fct_dr * fct_qxm)
+						B_PV       = sum(B* fct_dr) + DC_balance[age == max(age)] * fct_dr[age == max(age)]
+						#B_PV      = sum(B* fct_dr * fct_qxm)
+						# B_PV_tot_drLow   = sum(B* fct_dr_low * fct_qxm)
+	)
+
+
+df_pvB_diff_quintile <- 
+  df_benefit_PV %>% 
+	filter(sim > 0) %>% 
+	select(-runname_wlabel) %>% 
+	left_join(filter(df_benefit_PV, runname == "baseline") %>% ungroup %>% 
+							select(sim, 
+										 B_PV_baseline = B_PV
+										 #B_PV_dr_baseline  = B_PV_dr),
+										 #B_PV_tot_drLow_baseline = B_PV_tot_drLow), 
+										 ),
+						by = "sim"
+						) %>% 
+	left_join(df_CAGR$df, by = "sim") %>% 
+	mutate(
+		     B_PV_diff     = B_PV - B_PV_baseline,
+				 B_PV_diff_pct = 100*( B_PV / B_PV_baseline - 1),
+				 ) %>% 
+	group_by(runname, grp_CAGR) %>% 
+	summarise(B_PV          = fun_sum(B_PV),
+						B_PV_diff     = fun_sum(B_PV_diff),
+						B_PV_diff_pct = fun_sum(B_PV_diff_pct),
+						B_PV          = fun_sum(B_PV)
 						) %>% 
   arrange(runname, desc(grp_CAGR))
 
@@ -1932,6 +2044,80 @@ df_pvB_diff_quintile %>%
 	select(grp_CAGR, Return_Range, everything()) 
 
 ncol_tab <- ncol(df_tab_pvB)
+
+
+
+
+# 1. The annual withdrawal rate from the DC balance is assumed to be 7.5%.
+# 2. The present value of DC benefits is calculated as the sum of the present value of annual withdrawals from the DC account over age 60-85 and the present value of the remaining DC balance at the end of age 85.
+
+tab_pvB_quintile_gt <- 
+	df_tab_pvB %>% 
+	gt() %>% 
+		tab_header(
+    title = html("Present value of benefit over 30 years (age 60-89):<br>Percentage differences from baseline by long-term return quintile")
+  ) %>% 
+	cols_label(
+		grp_CAGR     = "Return quintile",
+		Return_Range = "Range of 30-year compound returns" 
+	) %>% 
+	
+	# formatting cells
+	fmt_number(
+		rows = c(1:5),
+		columns = c(4:9),
+		decimal = 1
+	) %>% 
+	fmt_percent(
+		rows = c(6:10),
+		columns = c(4:9),
+		decimal = 1
+	) %>% 
+	
+	# Table style
+	tab_style( # panel names
+    style = list(
+      cell_text(style = "italic",
+      					weight = "bold",
+      					align = "center")
+      ),
+    locations = cells_row_groups()
+	 ) %>% 
+	tab_style( # return columns
+    style = list(
+      cell_text(align = "center")
+      ),
+    locations = cells_body(columns = c(2, 3))
+	 ) %>% 
+	tab_style( # table title
+    style = list(
+      cell_text(align = "center",
+      					weight = "bold")
+      ),
+    locations = cells_title(groups = "title")
+	 ) %>% 
+	tab_style( # column names
+    style = list(
+      cell_text(align = "right",
+      					v_align = "middle",
+      					weight = "bold"
+      					)
+      ),
+    locations = cells_column_labels()
+	 ) %>%
+	opt_table_font( # table font
+		font = "Times"
+	) %>% 
+	cols_width( # column width
+    grp_CAGR ~ px(60),
+    Return_Range ~ px(90),
+    4:9 ~ px(115)
+  )
+
+tab_pvB_quintile_gt 
+
+
+
 
 
 tab_pvB_quintile <- 
@@ -1982,31 +2168,7 @@ tbl_pvB_y30 <- get_pvB_quintile(df_benefit_y30, 30)
 
 tbl_pvB_y30$tbl
 
-
 save_as_image(tbl_pvB_y30$tbl, path = paste0(dir_outputs, "tbl_quintile_Bpv_y30.png"))
-#save_as_image(tbl_pvB_y26$tbl, path = paste0(dir_outputs, "tbl_quintile_Bpv_y26.png"))
-
-# 
-# xlsx::write.xlsx2(tbl_pvB_y26$df_tbl, 
-# 									file = paste0(dir_outputs, "tbl_quintile_Bpv.xlsx"), 
-# 									sheetName = "pvB_y26")
-# 
-# xlsx::write.xlsx2(tbl_pvB_y26$df_values, 
-# 									file = paste0(dir_outputs, "tbl_quintile_Bpv.xlsx"), 
-# 									sheetName = "pvB_y26_values",
-# 									append = TRUE)
-# 
-# 
-# xlsx::write.xlsx2(tbl_pvB_y41$df_tbl, 
-# 									file = paste0(dir_outputs, "tbl_quintile_Bpv.xlsx"), 
-# 									sheetName = "pvB_y41",
-# 									append = TRUE)
-# 
-# xlsx::write.xlsx2(tbl_pvB_y41$df_values, 
-# 									file = paste0(dir_outputs, "tbl_quintile_Bpv.xlsx"), 
-# 									sheetName = "pvB_y41_values",
-# 									append = TRUE)
-
 
 
 
@@ -2020,8 +2182,8 @@ save_as_image(tbl_pvB_y30$tbl, path = paste0(dir_outputs, "tbl_quintile_Bpv_y30.
 
 get_Bvol_quintile <- function(df, span){
 
-# df = df_benefit_y41
-# span = 41
+# df = df_benefit_y30
+# span = 30
 
 fun_sum <- median
 
@@ -2063,6 +2225,73 @@ df_Bvol %>%
 	
 ncol_tab <- ncol(df_tbl_Bvol)	
 
+
+tbl_Bvol_gt <- 
+  df_tbl_Bvol %>% 
+	gt() %>% 
+		tab_header(
+    title = html("Maximum 5-year decreases in real benefit by long-term return quintile"),
+    subtitle = "(Median values within quintiles)"
+  ) %>% 
+	cols_label(
+		grp_CAGR     = "Return quintile",
+		Return_Range = "Range of 30-year compound returns" 
+	) %>% 
+	
+	# formatting cells
+	fmt_percent(
+		columns = c(3:ncol_tab),
+		decimal = 1,
+		scale_values = FALSE
+	) %>% 
+	
+	# Table style
+	tab_style( # panel names
+    style = list(
+      cell_text(style = "italic",
+      					weight = "bold",
+      					align = "center")
+      ),
+    locations = cells_row_groups()
+	 ) %>% 
+	tab_style( # return columns
+    style = list(
+      cell_text(align = "center")
+      ),
+    locations = cells_body(columns = c(1, 2))
+	 ) %>% 
+	tab_style( # table title
+    style = list(
+      cell_text(align = "center",
+      					weight = "bold")
+      ),
+    locations = cells_title(groups = "title")
+	 ) %>% 
+	tab_style( # column names
+    style = list(
+      cell_text(align = "right",
+      					v_align = "middle",
+      					weight = "bold"
+      					)
+      ),
+    locations = cells_column_labels()
+	 ) %>%
+	opt_table_font( # table font
+		font = "Times"
+	) %>% 
+	cols_width( # column width
+    grp_CAGR ~ px(60),
+
+    Return_Range ~ px(90),
+    3 ~ px(100),
+    4:6 ~ px(115),
+    7:ncol_tab ~ px(120)
+  )
+# tbl_Bvol_gt
+
+
+
+
 tbl_Bvol <- 
   df_tbl_Bvol %>% 	
 	flextable() %>%
@@ -2087,7 +2316,8 @@ tbl_Bvol
 list(
 	df     = df_Bvol,
 	df_tbl = df_tbl_Bvol,  
-	tbl    = tbl_Bvol
+	tbl    = tbl_Bvol,
+	tbl_gt = tbl_Bvol_gt
 )
 
 }
@@ -2096,9 +2326,13 @@ tbl_Bvol_y30 <- get_Bvol_quintile(df_benefit_y30, 30)
 # tbl_Bvol_y26 <- get_Bvol_quintile(df_benefit_y26, 26)
 
 tbl_Bvol_y30$tbl
+tbl_Bvol_y30$tbl_gt
+
+gtsave(tbl_Bvol_y30$tbl_gt, filename = paste0(dir_outputs, "tbl_benefit_vol_med.pdf"))
 
 
-save_as_image(tbl_Bvol_y30$tbl, path = paste0(dir_outputs, "tbl_quintile_Bvol_y30.png"))
+
+# save_as_image(tbl_Bvol_y30$tbl, path = paste0(dir_outputs, "tbl_quintile_Bvol_y30.png"))
 # save_as_image(tbl_Bvol_y41$tbl, path = paste0(dir_outputs, "tbl_quintile_Bvol_y41.png"))
 
 # xlsx::write.xlsx2(tbl_Bvol_y26$df_tbl, 
@@ -2124,10 +2358,10 @@ runnames_benefit  <- c(
 		cola_returnSmooth_calib2 = "Contingent COLA:\n5-year return",
 		# cola_returnSmooth_calib2_s10 = "Contingent COLA:\n10-year return",
 		
-		cola_FR_calib            = "Contingent COLA:\nfunded ratio\nYear-1 funded ratio 75%",
-	  cola_FR_calib_FR100      = "Contingent COLA:\nfunded ratio\nYear-1 funded ratio 100%",
+		cola_FR_calib            = "Contingent COLA:\nfunded ratio\n(year-1 funded ratio 75%)",
+	  cola_FR_calib_FR100      = "Contingent COLA:\nfunded ratio\n(year-1 funded ratio 100%)",
 		
-		hybrid_DB_noLegacy_highR       = "Hybrid\nDB-DC: high return",
+		hybrid_DB_noLegacy_highR      = "Hybrid\nDB-DC: high return",
 		hybrid_DB_noLegacy_lowR       = "Hybrid\nDB-DC: low return"
 		
 		# hybrid_DB_noLegacy       = "Hybrid\nDB-DC"
@@ -2198,14 +2432,42 @@ df_low_pvB %>%
     columns = 2:6,
     decimals = 1) %>% 
 	tab_header(
-    title = html("Probability of present value of benefit below 90%, 95%, and 100% of the level in baseline"), 
+    title = html("Probability of present value of benefit below 90%, 95%, and 100%<br>of the level in baseline"), 
     subtitle = "For members who retire at age 60 in year 1"
   ) %>% 
-	tab_stubhead(label = "Measure")
+	tab_stubhead(label = "Measure") %>% 
+	
+	# Table style
+	tab_style( # table title
+    style = list(
+      cell_text(align = "center",
+      					weight = "bold")
+      ),
+    locations = cells_title(groups = "title")
+	 ) %>% 
+	tab_style( # column names
+    style = list(
+      cell_text(align = "right",
+      					v_align = "middle",
+      					weight = "bold"
+      					)
+      ),
+    locations = cells_column_labels()
+	 ) %>%
+	opt_table_font( # table font
+		font = "Times"
+	) %>% 
+	cols_width( # column width
+    Measure ~ px(135),
+    2:6 ~ px(110)
+  )
+
+
+	
 
 tbl_Bpv_probLow
 
-gtsave(tbl_Bpv_probLow, paste0(dir_outputs, "tbl_Bpv_probLow.png"))
+gtsave(tbl_Bpv_probLow, paste0(dir_outputs, "tbl_benefit_probLowPV.pdf"))
 
 
 ```
@@ -2262,11 +2524,37 @@ tbl_B_real_probLow <-
     title = html("Probability of real benefit falling below 90% of starting benefit<br>in any year up to year 15 or 30"),
     subtitle = "For members who retire at age 60 in year 1"
   ) %>% 
-	tab_stubhead(label = "Up to year")
+	tab_stubhead(label = "Up to year") %>% 
+		# Table style
+	tab_style( # table title
+    style = list(
+      cell_text(align = "center",
+      					weight = "bold")
+      ),
+    locations = cells_title(groups = "title")
+	 ) %>% 
+	tab_style( # column names
+    style = list(
+      cell_text(align = "right",
+      					v_align = "middle",
+      					weight = "bold"
+      					)
+      ),
+    locations = cells_column_labels()
+	 ) %>%
+	opt_table_font( # table font
+		font = "Times"
+	) %>% 
+	cols_width( # column width
+    year ~ px(60),
+    2:7 ~ px(110)
+  )
+
+
 
 tbl_B_real_probLow
 
-gtsave(tbl_B_real_probLow, paste0(dir_outputs, "tbl_B_real_probLow.png"))
+gtsave(tbl_B_real_probLow, paste0(dir_outputs, "tbl_benefit_probLowAnyYear.pdf"))
 
 
 # df_B_lowest <- 
@@ -2298,6 +2586,12 @@ gtsave(tbl_B_real_probLow, paste0(dir_outputs, "tbl_B_real_probLow.png"))
 ## Figure: Distribution of 40-year COLA
 
 ```{r}
+
+
+library(extrafont)
+font_import()
+loadfonts(device="win")       #Register fonts for Windows bitmap output
+fonts()                       #vector of font family names
 
 
 runnames_colaDist <- c(
@@ -2377,7 +2671,11 @@ list(
 
 
 fig_colaDist <- get_colaDist(results_all, start_year = 1, span = 30)
-fig_colaDist$fig
+
+fig_colaDist$fig <- 
+fig_colaDist$fig +
+	theme(text=element_text(family="Times New Roman", face="bold", size=12))
+
 
 save_figure(fig_colaDist$fig, dir_outputs, w = 11, h = 7, scale = 0.8)
 
