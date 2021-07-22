@@ -468,14 +468,12 @@ by long-term return quintile")
   )
 	
 tbl_ERC_PV_med
-gtsave(tbl_ERC_PV_med, filename = paste0(dir_outputs, "bl_ERC_PV_med.png"))
+gtsave(tbl_ERC_PV_med, filename = paste0(dir_outputs, "tbl_ERC_PV_med.pdf"))
+#gtsave(tbl_ERC_PV_med, filename = paste0(dir_outputs, "bl_ERC_PV_med.rtf"))	
 	
 	
 	
 	
-	
-
-
 ##  Data for making table for median difference from baseline
 df_tab_ERC_PV <- 
 df_PVC_quintiles1 %>% 
@@ -537,12 +535,6 @@ df_tab_pvERC
 
 
 # xlsx::write.xlsx2(df_tab_pvERC, file = "Analysis_paper1/figTbl_paper1/ERC_sim2sim.xlsx")
-
-
-
-
-
-
 
 
 
@@ -860,9 +852,6 @@ save_as_image(tbl_pvERC_y30_FR75$tbl, path = paste0(dir_outputs, "tbl_quintile_E
 
 
 
-
-
-
 ## Table for ERC volatility
 ```{r tab_ERC_vol1, echo = FALSE}
 
@@ -870,13 +859,12 @@ save_as_image(tbl_pvERC_y30_FR75$tbl, path = paste0(dir_outputs, "tbl_quintile_E
 get_ERCvol_tbl <- function(df, span = NULL, runnames_select){
   
 	
-	# df <- df_ERCMaxChg_30y$ERCMaxChg
-	# span = 30
-	 
-	df_CAGR <- get_CAGR(results_all, span)
-	
+# df <- df_ERCMaxChg_30y$ERCMaxChg
+# span = 30
+# runnames_select = runs_paper	 
 
 
+df_CAGR <- get_CAGR(results_all, span)
 fun_sum <- median
 # fun_sum <- mean
 
@@ -909,10 +897,74 @@ df_tab_ERC_vol <-
 												         labels = c(runnames_select)),
 												 ) %>%
 	spread(policy, value)
-	
-	
+
 	ncol_tab <- ncol(df_tab_ERC_vol)
+
+tab_ERC_vol_gt <- 	
+	df_tab_ERC_vol %>% 
+		gt() %>% 
+		tab_header(
+    title = html(paste0("Maximum increase in employer contribution rate in 5 years <br>over a ", span, "-year period by long-term return quintile")),
+    subtitle = "(Median values within return quintiles)"
+    ) %>% 
+	cols_label(
+		grp_CAGR     = "Return quinitle",
+		Return_Range = "Range of 30-year compound returns" 
+	) %>% 
 	
+	fmt_percent(
+		columns = c(3:10),
+		decimal = 1,
+		scale_values = FALSE
+	) %>% 
+	
+	# Table style
+
+	tab_style( # return columns
+    style = list(
+      cell_text(align = "center")
+      ),
+    locations = cells_body(columns = c(1, 2))
+	 ) %>% 
+	tab_style( # table title
+    style = list(
+      cell_text(align = "center",
+      					weight = "bold")
+      ),
+    locations = cells_title(groups = "title")
+	 ) %>% 
+	tab_style( # column names
+    style = list(
+      cell_text(align = "right",
+      					v_align = "middle",
+      					weight = "bold"
+      					)
+      ),
+    locations = cells_column_labels()
+	 ) %>%
+	opt_table_font( # table font
+		font = "Times"
+	) %>% 
+	cols_width( # column width
+    grp_CAGR ~ px(60),
+    Return_Range ~ px(90),
+    3:10 ~ px(115)
+  )
+	
+# tbl_ERC_PV_med
+# gtsave(tbl_ERC_PV_med, filename = paste0(dir_outputs, "bl_ERC_PV_med.pdf"))
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+		
 	tab_ERC_vol <-  
 	df_tab_ERC_vol%>% 
 	flextable() %>%
@@ -935,22 +987,23 @@ df_tab_ERC_vol <-
 
 # tab_ERC_vol
   list(df  = df_tab_ERC_vol,
-  		 tbl = tab_ERC_vol)
+  		 tbl = tab_ERC_vol,
+  		 tbl_gt = tab_ERC_vol_gt)
 	
 }
-
 
 
 #tbl_ERCvol_y15 <- get_ERCvol_tbl(df_ERCMaxChg_15y$ERCMaxChg, 15)
 tbl_ERCvol_y30_FR75 <- get_ERCvol_tbl(df_ERCMaxChg_30y$ERCMaxChg, 30, runs_paper)
 
 
-#tbl_ERCvol_y15$tbl
+
 tbl_ERCvol_y30_FR75$tbl
+tbl_ERCvol_y30_FR75$tbl_gt
 
 
-#save_as_image(tbl_ERCvol_y15$tbl, path = paste0(dir_outputs, "tbl_quintile_ERCvol_y15.png"))
-save_as_image(tbl_ERCvol_y30_FR75$tbl, path = paste0(dir_outputs, "tbl_quintile_ERCvol_y30_FR75.png"))
+gtsave(tbl_ERCvol_y30_FR75$tbl_gt, filename = paste0(dir_outputs, "tbl_ERC_vol_med.pdf"))
+# save_as_image(tbl_ERCvol_y30_FR75$tbl, path = paste0(dir_outputs, "tbl_quintile_ERCvol_y30_FR75.png"))
 
 
 # xlsx::write.xlsx2(tbl_ERCvol_y15$df, file = paste0(dir_outputs, "tbl_quintile_ERCvol.xlsx"), sheetName = "ERCvol_15y")
@@ -1005,10 +1058,35 @@ df_ERC_hike %>%
 	tab_header(
     title = html("Probability of employer contribution rate rising more than 10%<br>within a 5-year period in the first 15 or 20 years")
   ) %>% 
-	tab_stubhead(label = "Up to year")
-tbl_ERChike_FR75
+	tab_stubhead(label = "Up to year") %>% 
 
-gtsave(tbl_ERChike_FR75, paste0(dir_outputs, "tbl_ERChike_FR75.png"))
+	tab_style( # table title
+    style = list(
+      cell_text(align = "center",
+      					weight = "bold")
+      ),
+    locations = cells_title(groups = "title")
+	 ) %>% 
+	tab_style( # column names
+    style = list(
+      cell_text(align = "right",
+      					v_align = "middle",
+      					weight = "bold"
+      					)
+      ),
+    locations = cells_column_labels()
+	 ) %>%
+	opt_table_font( # table font
+		font = "Times"
+	) %>% 
+	cols_width( # column width
+    year ~ px(50),
+    2:9 ~ px(115)
+  )
+
+
+tbl_ERChike_FR75
+gtsave(tbl_ERChike_FR75, paste0(dir_outputs, "tbl_ERC_hike_FR75.pdf"))
 
 	
 ```
@@ -1022,23 +1100,174 @@ gtsave(tbl_ERChike_FR75, paste0(dir_outputs, "tbl_ERChike_FR75.png"))
 ## Table for PV EEC
 ```{r tab_ERC_PV, echo = FALSE}
 
-# 
-# runnames_pvERC_tbl  <- c(
-# 		baseline                 = "Baseline",
-# 		
-# 		cola_returnSmooth_calib2     = "Contingent COLA:\n5-year return",
-# 		# cola_returnSmooth_calib2_s10 = "Contingent COLA:\n10-year return",
-# 		cola_FR_calib                = "Contingent COLA:\nfunded ratio",
-# 		
-# 		EEC_returnSmooth         = "Contingent EEC:\n5-year return",
-# 		EEC_FR_t100              = "Contingent EEC:\nfunded ratio 100%",
-# 		
-# 		EEC_sharedADCcap         = "shared ADC\n 10% cap",  
-# 		EEC_sharedADC            = "shared ADC\n no cap", 
-# 		
-# 		hybrid_DB                = "Hybrid \nDB-DC"
-# 		#hybrid_DB_noLegacy       = "Hybrid \nDB-DC\nNo legacy cost",
-# 	)
+
+df_PVC <- df_PVC_30y %>% filter(sim>=1) 
+span <-  30
+runs_select <-  runs_paper
+
+
+df_CAGR <- get_CAGR(results_all, span)
+
+
+ptiles_measure <- c(ptile90 = 0.9, ptile75 = 0.75, ptile50 = 0.50, ptile25 = 0.25, ptile10 = 0.1)
+nsim <- filter(df_PVC, sim >= 1, runname == "baseline") %>% nrow()
+fun_sum <- median
+  
+
+  
+# extract PVC of baseline
+df_PVC_baseline <- 
+	filter(df_PVC, runname == "baseline") %>% 
+	ungroup %>% select(sim, EEC_PV_baseline = EEC_PV)
+
+
+# Values corresponding to the sim with median difference from the baseline
+df_PVC_quintiles1 <-
+	df_PVC %>% 
+	select(runname, sim, EEC_PV) %>% 
+	left_join(df_PVC_baseline, by = "sim" ) %>% 
+  left_join(df_CAGR$df, by = "sim") %>% 
+	mutate(
+		     EEC_PV_std_diff_pct = 100*( EEC_PV / EEC_PV_baseline - 1)
+				 ) %>% 
+	group_by(runname, grp_CAGR) %>% 
+	arrange(runname, grp_CAGR, EEC_PV_std_diff_pct) %>% 
+	summarise(
+		        
+		        # median PV EEC of baseline
+		        EEC_PV_baseline_med = median(EEC_PV_baseline),
+		        
+		        # Median difference from the baseline
+		        EEC_PV_std_diff_pct = EEC_PV_std_diff_pct[round(n()/2)],
+						
+		        # Median values
+		        EEC_PV_med  = median(EEC_PV),
+
+		        # Values under alt. policies corresponding to the median difference from the baseline
+		        EEC_PV              = EEC_PV[round(n()/2)],
+
+						# Values under baseline corresponding to the median difference from the baseline
+						EEC_PV_baseline      = EEC_PV_baseline[round(n()/2)],
+						) %>% 
+
+  arrange(runname, desc(grp_CAGR)) %>% 
+	#For paper: standardize using the group 3 value of baseline
+	ungroup %>% 
+	mutate(
+		     fct_std   = EEC_PV_baseline_med[grp_CAGR == 3 & runname == "baseline"],
+		     
+				 a.EEC_PV_baseline_std      = 100 * EEC_PV_baseline      / fct_std,
+
+				 d.EEC_PV_std          = 100 * EEC_PV  / fct_std,
+
+				 g.EEC_PV_med_std      = 100 * EEC_PV_med      / fct_std,
+
+				 EEC_PV_baseline_med_std = 100 * EEC_PV_baseline_med / fct_std
+				 )
+
+
+df_PVC_quintiles1 
+
+
+
+## Making median-within-quintile table for ERC_
+runs_paper
+ 
+df_tbl_pvEEC_med <- 
+  df_PVC_quintiles1 %>% 
+	select(runname, grp_CAGR, EEC_PV_baseline_med_std, EEC_pv_med_std = g.EEC_PV_med_std) %>% 
+	filter(runname %in% names(runs_paper)[c(1, 4, 5, 6, 7)]) %>%
+	arrange(runname, grp_CAGR) %>% 
+	mutate(EEC_pv_med_std_diff = EEC_pv_med_std / EEC_PV_baseline_med_std - 1,
+				 EEC_PV_baseline_med_std = NULL
+				 ) %>% 
+	gather(panel, value, -runname, -grp_CAGR) %>% 
+	mutate(runname = factor(runname, labels = runs_paper[c(1,4, 5, 6, 7)]),
+				 panel   = factor(panel, 
+				 								  levels = c("EEC_pv_med_std", "EEC_pv_med_std_diff"),
+				 								  labels = c("Median present value of employer contribution within quintiles",
+				 								  					 "Percentage difference from Baseline")
+				 								 )) %>% 
+	spread(runname, value) %>% 
+	arrange(panel, grp_CAGR) %>% 
+	mutate(Return_Range = rep(df_CAGR$cutoff, 2)) %>% 
+  relocate(panel, grp_CAGR, Return_Range) %>% 
+	group_by(panel)
+	
+df_tbl_pvEEC_med
+
+
+tbl_EEC_PV_med <-
+  df_tbl_pvEEC_med %>% 
+	gt %>% 
+	
+	tab_header(
+    title = html("30-year present value of employee contributions under difference policies<br> 
+by long-term return quintile")
+  ) %>% 
+	cols_label(
+		grp_CAGR     = "Return quinitle",
+		Return_Range = "Range of 30-year compound returns" 
+	) %>% 
+	
+	# formatting cells
+	fmt_number(
+		rows = c(1:5),
+		columns = c(4:8),
+		decimal = 1
+	) %>% 
+	fmt_percent(
+		rows = c(6:10),
+		columns = c(4:8),
+		decimal = 1
+	) %>% 
+	
+	# Table style
+	tab_style( # panel names
+    style = list(
+      cell_text(style = "italic",
+      					weight = "bold",
+      					align = "center")
+      ),
+    locations = cells_row_groups()
+	 ) %>% 
+	tab_style( # return columns
+    style = list(
+      cell_text(align = "center")
+      ),
+    locations = cells_body(columns = c(2, 3))
+	 ) %>% 
+	tab_style( # table title
+    style = list(
+      cell_text(align = "center",
+      					weight = "bold")
+      ),
+    locations = cells_title(groups = "title")
+	 ) %>% 
+	tab_style( # column names
+    style = list(
+      cell_text(align = "right",
+      					v_align = "middle",
+      					weight = "bold"
+      					)
+      ),
+    locations = cells_column_labels()
+	 ) %>%
+	opt_table_font( # table font
+		font = "Times"
+	) %>% 
+	cols_width( # column width
+    grp_CAGR ~ px(60),
+    Return_Range ~ px(90),
+    4:8 ~ px(115)
+  )
+	
+tbl_EEC_PV_med
+gtsave(tbl_EEC_PV_med, filename = paste0(dir_outputs, "tbl_EEC_PV_med.pdf"))
+#gtsave(tbl_EEC_PV_med, filename = paste0(dir_outputs, "bl_ERC_PV_med.rtf"))	
+	
+
+
 
 
 
@@ -1047,8 +1276,9 @@ get_pvEEC_tbl <- function(df_PVC, span = NULL, runs_select){
 	
 	# if(is.null(span)) span <- as.character(substitute(df_PVC)) %>% str_extract("\\d+")
 	# select the df_PVC to use
-	# df_PVC <- df_PVC_15y
-	# span = 15
+	# df_PVC <- df_PVC_30y
+	# span = 30
+	# runs_select = runs_paper
 
 	df_CAGR <- get_CAGR(results_all, span)
 	
@@ -1179,7 +1409,7 @@ tbl_pvEEC_y30_FR75$tbl
 
 
 
-save_as_image(tbl_pvEEC_y30_FR75$tbl, path = paste0(dir_outputs, "tbl_quintile_EECpv_y30_FR75.png"))
+# save_as_image(tbl_pvEEC_y30_FR75$tbl, path = paste0(dir_outputs, "tbl_quintile_EECpv_y30_FR75.png"))
 
 
 # xlsx::write.xlsx2(tbl_pvERC_y15$df, file = paste0(dir_outputs, "tbl_quintile_ERCpv.xlsx"), sheetName = "pvERC_15y_diff")
@@ -1197,12 +1427,12 @@ save_as_image(tbl_pvEEC_y30_FR75$tbl, path = paste0(dir_outputs, "tbl_quintile_E
 get_EECvol_tbl <- function(df, span = NULL, runnames_select){
   
 	
-	# df <- df_EECMaxChg_30y$EECMaxChg
+	# df = df_EECMaxChg_30y$EECMaxChg
 	# span = 30
+	# runnames_select = runs_paper[c(1, 4:7)]
 	 
 	df_CAGR <- get_CAGR(results_all, span)
 	
-
 
 fun_sum <- median
 # fun_sum <- mean
@@ -1237,8 +1467,63 @@ df_tab_EEC_vol <-
 												 ) %>%
 	spread(policy, value)
 	
-	
 	ncol_tab <- ncol(df_tab_EEC_vol)
+	
+	
+tab_EEC_vol_gt <-  
+	df_tab_EEC_vol%>% 
+	gt() %>% 
+		tab_header(
+    title = html(paste0("Maximum increase in employee contribution rate in 5 years <br>over a ", span, "-year period by long-term return quintile")),
+    subtitle = "(Median values within return quintiles)"
+    ) %>% 
+	cols_label(
+		grp_CAGR     = "Return quinitle",
+		Return_Range = "Range of 30-year compound returns" 
+	) %>% 
+	
+	fmt_percent(
+		columns = c(3:7),
+		decimal = 1,
+		scale_values = FALSE
+	) %>% 
+	
+	# Table style
+
+	tab_style( # return columns
+    style = list(
+      cell_text(align = "center")
+      ),
+    locations = cells_body(columns = c(1, 2))
+	 ) %>% 
+	tab_style( # table title
+    style = list(
+      cell_text(align = "center",
+      					weight = "bold")
+      ),
+    locations = cells_title(groups = "title")
+	 ) %>% 
+	tab_style( # column names
+    style = list(
+      cell_text(align = "right",
+      					v_align = "middle",
+      					weight = "bold"
+      					)
+      ),
+    locations = cells_column_labels()
+	 ) %>%
+	opt_table_font( # table font
+		font = "Times"
+	) %>% 
+	cols_width( # column width
+    grp_CAGR ~ px(60),
+    Return_Range ~ px(90),
+    3:7 ~ px(115)
+  )
+# tab_EEC_vol_gt	
+	
+	
+	
 	
 	tab_EEC_vol <-  
 	df_tab_EEC_vol%>% 
@@ -1263,21 +1548,22 @@ df_tab_EEC_vol <-
 
 # tab_EEC_vol
   list(df  = df_tab_EEC_vol,
-  		 tbl = tab_EEC_vol)
+  		 tbl = tab_EEC_vol,
+  		 tbl_gt = tab_EEC_vol_gt)
 }
 
 
-
-#tbl_EECvol_y15 <- get_EECvol_tbl(df_EECMaxChg_15y$EECMaxChg, 15)
 tbl_EECvol_y30_FR75 <- get_EECvol_tbl(df_EECMaxChg_30y$EECMaxChg, 30, runs_paper[c(1, 4:7)])
 
 
 #tbl_EECvol_y15$tbl
 tbl_EECvol_y30_FR75$tbl
+tbl_EECvol_y30_FR75$tbl_gt
 
+gtsave(tbl_EECvol_y30_FR75$tbl_gt, filename = paste0(dir_outputs, "tbl_EEC_vol_med.pdf"))
 
-#save_as_image(tbl_EECvol_y15$tbl, path = paste0(dir_outputs, "tbl_quintile_EECvol_y15.png"))
-save_as_image(tbl_EECvol_y30_FR75$tbl, path = paste0(dir_outputs, "tbl_quintile_EECvol_y30_FR75.png"))
+# save_as_image(tbl_EECvol_y15$tbl, path = paste0(dir_outputs, "tbl_quintile_EECvol_y15.png"))
+# save_as_image(tbl_EECvol_y30_FR75$tbl, path = paste0(dir_outputs, "tbl_quintile_EECvol_y30_FR75.png"))
 
 # xlsx::write.xlsx2(tbl_ERCvol_y15$df, file = paste0(dir_outputs, "tbl_quintile_ERCvol.xlsx"), sheetName = "ERCvol_15y")
 # xlsx::write.xlsx2(tbl_ERCvol_y30$df, file = paste0(dir_outputs, "tbl_quintile_ERCvol.xlsx"), sheetName = "ERCvol_30y", append = TRUE)
